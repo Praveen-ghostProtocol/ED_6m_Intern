@@ -1,0 +1,16 @@
+.next/
+node_modules/
+out/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+Thumbs.db
+.DS_Store
+tsconfig.tsbuildinfo
+dev-server*.log
+student-credentials.csv
+test-user-credentials.csv
+*.credentials.csv
