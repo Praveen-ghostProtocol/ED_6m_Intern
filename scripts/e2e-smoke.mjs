@@ -51,10 +51,6 @@ assertOk(studentCred?.temporary_password, "Missing student credential for ed23b0
 assertOk(organizerCred?.temporary_password, "Missing organizer test credential.");
 assertOk(recruiterCred?.temporary_password, "Missing recruiter test credential.");
 
-for (const email of [studentCred.email, organizerCred.email, recruiterCred.email]) {
-  const { error } = await admin.from("profiles").update({ must_change_password: false }).eq("email", email);
-  if (error) throw error;
-}
 
 const student = await signIn(url, anonKey, studentCred.email, studentCred.temporary_password);
 const { data: studentRow, error: studentError } = await student
