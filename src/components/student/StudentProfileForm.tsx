@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Save } from "lucide-react";
 import { updateStudentProfile, type StudentActionState } from "@/app/student/actions";
@@ -8,8 +8,11 @@ import type { Profile } from "@/types/auth";
 import {
   branchSpecialisations,
   genderOptions,
+  type BranchSpecialisation,
   type StudentRecord
 } from "@/types/student";
+
+const idddPrefix = "IDDD - ";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -41,6 +44,22 @@ function Field({
   );
 }
 
+function getInitialBranchSpecialisation(value: string | null) {
+  if (!value) {
+    return { idddDetail: "", selected: "" };
+  }
+
+  if (value.startsWith(idddPrefix)) {
+    return { idddDetail: value.slice(idddPrefix.length), selected: "IDDD" };
+  }
+
+  if (branchSpecialisations.includes(value as BranchSpecialisation)) {
+    return { idddDetail: "", selected: value };
+  }
+
+  return { idddDetail: "", selected: "" };
+}
+
 const inputClass =
   "h-10 rounded-portal border border-portal-line bg-white px-3 text-sm outline-none transition focus:border-portal-blue focus:ring-2 focus:ring-portal-sky disabled:bg-slate-50 disabled:text-portal-muted";
 const textareaClass =
@@ -48,6 +67,8 @@ const textareaClass =
 
 export function StudentProfileForm({ profile, student }: { profile: Profile; student: StudentRecord }) {
   const [state, formAction] = useActionState<StudentActionState, FormData>(updateStudentProfile, {});
+  const initialBranchSpecialisation = getInitialBranchSpecialisation(student.branch_specialisation);
+  const [selectedBranchSpecialisation, setSelectedBranchSpecialisation] = useState(initialBranchSpecialisation.selected);
 
   return (
     <form action={formAction} className="space-y-5">
@@ -78,7 +99,13 @@ export function StudentProfileForm({ profile, student }: { profile: Profile; stu
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Branch specialisation">
-            <select className={inputClass} name="branchSpecialisation" defaultValue={student.branch_specialisation ?? ""} required>
+            <select
+              className={inputClass}
+              name="branchSpecialisation"
+              onChange={(event) => setSelectedBranchSpecialisation(event.target.value)}
+              required
+              value={selectedBranchSpecialisation}
+            >
               <option value="">Select specialisation</option>
               {branchSpecialisations.map((specialisation) => (
                 <option key={specialisation} value={specialisation}>{specialisation}</option>
@@ -98,6 +125,17 @@ export function StudentProfileForm({ profile, student }: { profile: Profile; stu
               type="number"
             />
           </Field>
+          {selectedBranchSpecialisation === "IDDD" ? (
+            <Field label="IDDD specialisation">
+              <input
+                className={inputClass}
+                defaultValue={initialBranchSpecialisation.idddDetail}
+                name="idddSpecialisation"
+                placeholder="Enter your IDDD programme"
+                required
+              />
+            </Field>
+          ) : null}
         </div>
       </section>
 

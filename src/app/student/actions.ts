@@ -21,6 +21,7 @@ const optionalTextSchema = z.string().trim().transform((value) => (value.length 
 const requiredTextSchema = z.string().trim().min(1, "Fill all required fields.");
 const pincodeSchema = z.string().trim().regex(/^\d{4,10}$/, "Use a valid pincode.");
 const cgpaSchema = z.coerce.number().min(0, "CGPA must be at least 0.").max(10, "CGPA cannot exceed 10.");
+const idddPrefix = "IDDD - ";
 const profileSchema = z.object({
   fullName: requiredTextSchema.max(120),
   phone: requiredTextSchema.max(24),
@@ -33,6 +34,7 @@ const profileSchema = z.object({
   permanentAddressPincode: pincodeSchema,
   permanentAddress: requiredTextSchema.max(800),
   branchSpecialisation: z.enum(branchSpecialisations),
+  idddSpecialisation: optionalTextSchema,
   cgpa: cgpaSchema
 });
 
@@ -67,12 +69,22 @@ export async function updateStudentProfile(
     permanentAddressPincode: formText(formData, "permanentAddressPincode"),
     permanentAddress: formText(formData, "permanentAddress"),
     branchSpecialisation: formText(formData, "branchSpecialisation"),
+    idddSpecialisation: formText(formData, "idddSpecialisation"),
     cgpa: formText(formData, "cgpa")
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the profile details and try again." };
   }
+
+  if (parsed.data.branchSpecialisation === "IDDD" && !parsed.data.idddSpecialisation) {
+    return { error: "Enter the IDDD specialisation." };
+  }
+
+  const branchSpecialisationValue =
+    parsed.data.branchSpecialisation === "IDDD"
+      ? `${idddPrefix}${parsed.data.idddSpecialisation ?? ""}`
+      : parsed.data.branchSpecialisation;
 
   const supabase = await createClient();
   const { error: profileError } = await supabase
@@ -96,7 +108,7 @@ export async function updateStudentProfile(
       current_address: parsed.data.currentAddress,
       permanent_address_pincode: parsed.data.permanentAddressPincode,
       permanent_address: parsed.data.permanentAddress,
-      branch_specialisation: parsed.data.branchSpecialisation,
+      branch_specialisation: branchSpecialisationValue,
       cgpa: parsed.data.cgpa,
       profile_completed_at: new Date().toISOString()
     })

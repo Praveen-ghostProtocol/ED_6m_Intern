@@ -13,6 +13,12 @@ function hasText(value: string | null | undefined) {
   return Boolean(value?.trim());
 }
 
+function hasCompleteBranchSpecialisation(value: string | null | undefined) {
+  const trimmedValue = value?.trim();
+
+  return Boolean(trimmedValue && trimmedValue !== "IDDD" && trimmedValue !== "IDDD -");
+}
+
 export function isStudentProfileComplete(student: StudentRecord, profile?: Profile | null) {
   return Boolean(
     hasText(profile?.full_name) &&
@@ -23,7 +29,7 @@ export function isStudentProfileComplete(student: StudentRecord, profile?: Profi
       hasText(student.current_address) &&
       hasText(student.permanent_address_pincode) &&
       hasText(student.permanent_address) &&
-      hasText(student.branch_specialisation) &&
+      hasCompleteBranchSpecialisation(student.branch_specialisation) &&
       student.cgpa !== null
   );
 }

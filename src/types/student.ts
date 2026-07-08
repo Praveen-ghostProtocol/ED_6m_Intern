@@ -7,14 +7,7 @@ export type ApplicationStatus =
   | "selected"
   | "offer_given";
 
-export const branchSpecialisations = [
-  "Automotive Engineering",
-  "Biomedical Design",
-  "Robotics",
-  "Product Design",
-  "General Engineering Design",
-  "Other"
-] as const;
+export const branchSpecialisations = ["Automotive", "Biomedical", "IDDD"] as const;
 
 export const genderOptions = ["Female", "Male", "Non-binary", "Prefer not to say"] as const;
 
