@@ -22,6 +22,7 @@ npm.cmd run build
    - `supabase/migrations/002_resume_storage.sql`
    - `supabase/migrations/003_api_grants_and_rls_fix.sql`
    - `supabase/migrations/004_service_role_grants.sql`
+   - `supabase/migrations/005_student_profile_details.sql`
 4. Confirm the `resumes` bucket is private, PDF-only, and has a 5 MB limit.
 5. In Auth settings, disable or bypass email confirmation for the initial internal password-based test.
 
@@ -69,6 +70,7 @@ Never add `SUPABASE_SERVICE_ROLE_KEY` unless a workflow specifically needs serve
 
 - Student login works with temporary password.
 - First-login password change works.
+- Student completes required profile details.
 - Resume upload works for PDFs under 5 MB.
 - Organizer can verify resumes.
 - Student can apply with verified resume only.

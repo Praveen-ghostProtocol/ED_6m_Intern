@@ -1,9 +1,9 @@
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { StatusBadge } from "@/components/student/StatusBadge";
-import { requireRole } from "@/lib/auth/guards";
 import { studentNavigation } from "@/lib/rbac";
-import { getStudentApplications, getStudentByProfileId } from "@/lib/student/queries";
+import { requireStudent } from "@/lib/student/guards";
+import { getStudentApplications } from "@/lib/student/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,25 +16,7 @@ function formatDate(value: string) {
 }
 
 export default async function StudentApplicationsPage() {
-  const profile = await requireRole("student");
-  const student = await getStudentByProfileId(profile.id);
-
-  if (!student) {
-    return (
-      <PortalShell
-        navigation={studentNavigation}
-        profile={profile}
-        subtitle="Track shortlist and offer status for submitted applications."
-        title="Applied Companies"
-      >
-        <EmptyState
-          description="Your student profile must be imported before application tracking can open."
-          title="Student profile not found"
-        />
-      </PortalShell>
-    );
-  }
-
+  const { profile, student } = await requireStudent();
   const applications = await getStudentApplications(student.id);
 
   return (
@@ -72,18 +54,10 @@ export default async function StudentApplicationsPage() {
                     <td className="px-4 py-4 text-portal-muted">{application.role_title}</td>
                     <td className="px-4 py-4 text-portal-muted">{application.resume_file_name}</td>
                     <td className="px-4 py-4 text-portal-muted">{formatDate(application.applied_at)}</td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={application.resume_shortlist_status} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={application.test_status} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={application.gd_status} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={application.offer_status} />
-                    </td>
+                    <td className="px-4 py-4"><StatusBadge status={application.resume_shortlist_status} /></td>
+                    <td className="px-4 py-4"><StatusBadge status={application.test_status} /></td>
+                    <td className="px-4 py-4"><StatusBadge status={application.gd_status} /></td>
+                    <td className="px-4 py-4"><StatusBadge status={application.offer_status} /></td>
                   </tr>
                 ))}
               </tbody>

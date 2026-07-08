@@ -18,6 +18,8 @@ export type OrganizerStudent = {
   full_name: string | null;
   cgpa: number | null;
   branch: string;
+  branch_specialisation: string | null;
+  profile_completed_at: string | null;
   is_active: boolean;
   must_change_password: boolean;
   resume_count: number;

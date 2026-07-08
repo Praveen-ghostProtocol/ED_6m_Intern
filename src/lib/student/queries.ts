@@ -11,7 +11,7 @@ export async function getStudentByProfileId(profileId: string): Promise<StudentR
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
-    .select("id,profile_id,roll_number,cgpa,phone,branch")
+    .select("id,profile_id,roll_number,cgpa,phone,alternate_phone,alternate_email,date_of_birth,gender,current_address_pincode,current_address,permanent_address_pincode,permanent_address,branch,branch_specialisation,profile_completed_at")
     .eq("profile_id", profileId)
     .single();
 

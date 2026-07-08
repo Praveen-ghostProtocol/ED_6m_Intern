@@ -7,13 +7,37 @@ export type ApplicationStatus =
   | "selected"
   | "offer_given";
 
+export const branchSpecialisations = [
+  "Automotive Engineering",
+  "Biomedical Design",
+  "Robotics",
+  "Product Design",
+  "General Engineering Design",
+  "Other"
+] as const;
+
+export const genderOptions = ["Female", "Male", "Non-binary", "Prefer not to say"] as const;
+
+export type BranchSpecialisation = (typeof branchSpecialisations)[number];
+export type GenderOption = (typeof genderOptions)[number];
+
 export type StudentRecord = {
   id: string;
   profile_id: string;
   roll_number: string;
   cgpa: number | null;
   phone: string | null;
+  alternate_phone: string | null;
+  alternate_email: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  current_address_pincode: string | null;
+  current_address: string | null;
+  permanent_address_pincode: string | null;
+  permanent_address: string | null;
   branch: string;
+  branch_specialisation: string | null;
+  profile_completed_at: string | null;
 };
 
 export type StudentResume = {

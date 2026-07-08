@@ -44,7 +44,7 @@ export async function getStudentsForOrganizer(): Promise<OrganizerStudent[]> {
   const [{ data: students }, { data: resumes }, { data: applications }] = await Promise.all([
     supabase
       .from("students")
-      .select("id,roll_number,cgpa,branch,profiles(email,full_name,is_active,must_change_password)")
+      .select("id,roll_number,cgpa,branch,branch_specialisation,profile_completed_at,profiles(email,full_name,is_active,must_change_password)")
       .order("roll_number", { ascending: true }),
     supabase.from("resumes").select("student_id"),
     supabase.from("applications").select("student_id")
@@ -65,6 +65,8 @@ export async function getStudentsForOrganizer(): Promise<OrganizerStudent[]> {
       full_name: (profile?.full_name as string | null | undefined) ?? null,
       cgpa: (student.cgpa as number | null) ?? null,
       branch: student.branch as string,
+      branch_specialisation: (student.branch_specialisation as string | null) ?? null,
+      profile_completed_at: (student.profile_completed_at as string | null) ?? null,
       is_active: Boolean(profile?.is_active),
       must_change_password: Boolean(profile?.must_change_password),
       resume_count: resumeCounts.get(student.id as string) ?? 0,

@@ -18,6 +18,7 @@ Real account creation should run only after the Supabase project is created and 
    - `supabase/migrations/002_resume_storage.sql`
    - `supabase/migrations/003_api_grants_and_rls_fix.sql`
    - `supabase/migrations/004_service_role_grants.sql`
+   - `supabase/migrations/005_student_profile_details.sql`
 5. Confirm the `resumes` bucket exists, is private, allows only PDFs, and has a 5 MB limit.
 
 ## Student Credentials Preview

@@ -3,9 +3,9 @@ import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { ResumeUploadForm } from "@/components/student/ResumeUploadForm";
 import { StatusBadge } from "@/components/student/StatusBadge";
-import { requireRole } from "@/lib/auth/guards";
 import { studentNavigation } from "@/lib/rbac";
-import { getStudentByProfileId, getStudentResumes } from "@/lib/student/queries";
+import { requireStudent } from "@/lib/student/guards";
+import { getStudentResumes } from "@/lib/student/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,7 @@ function formatDate(value: string) {
 }
 
 export default async function StudentResumesPage() {
-  const profile = await requireRole("student");
-  const student = await getStudentByProfileId(profile.id);
+  const { profile, student } = await requireStudent();
 
   return (
     <PortalShell
@@ -32,16 +31,7 @@ export default async function StudentResumesPage() {
       subtitle="Upload up to three PDF resumes and track verification status."
       title="My Resumes"
     >
-      {!student ? (
-        <EmptyState
-          description="Your login is active, but no student record is attached to it yet."
-          title="Student profile not found"
-        />
-      ) : (
-        <div className="space-y-5">
-          <ResumeList studentId={student.id} />
-        </div>
-      )}
+      <ResumeList studentId={student.id} />
     </PortalShell>
   );
 }
@@ -82,9 +72,7 @@ async function ResumeList({ studentId }: { studentId: string }) {
                     </td>
                     <td className="px-4 py-4 text-portal-muted">{formatDate(resume.uploaded_at)}</td>
                     <td className="px-4 py-4 text-portal-muted">{formatBytes(resume.file_size_bytes)}</td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={resume.status} />
-                    </td>
+                    <td className="px-4 py-4"><StatusBadge status={resume.status} /></td>
                     <td className="px-4 py-4">
                       {resume.signed_url ? (
                         <a

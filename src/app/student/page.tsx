@@ -1,36 +1,17 @@
 import { FileCheck2, Building2, ClipboardList } from "lucide-react";
 import { PortalShell } from "@/components/portal/PortalShell";
-import { EmptyState } from "@/components/student/EmptyState";
-import { requireRole } from "@/lib/auth/guards";
 import { studentNavigation } from "@/lib/rbac";
+import { requireStudent } from "@/lib/student/guards";
 import {
   getOpenCompanyRoles,
   getStudentApplications,
-  getStudentByProfileId,
   getStudentResumes
 } from "@/lib/student/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentDashboard() {
-  const profile = await requireRole("student");
-  const student = await getStudentByProfileId(profile.id);
-
-  if (!student) {
-    return (
-      <PortalShell
-        navigation={studentNavigation}
-        profile={profile}
-        subtitle="Your account is active, but student details still need to be imported."
-        title="Student Dashboard"
-      >
-        <EmptyState
-          description="Ask the internship organizer to import your roll number, CGPA, and branch details before using the student portal."
-          title="Student profile not found"
-        />
-      </PortalShell>
-    );
-  }
+  const { profile, student } = await requireStudent();
 
   const [resumes, roles, applications] = await Promise.all([
     getStudentResumes(student.id),

@@ -11,6 +11,8 @@
 
 - Student logs in with temporary password.
 - Student is forced to change password on first login.
+- Student completes required profile details after first login.
+- Email and roll number are read-only in the profile form.
 - Student uploads a PDF resume under 5 MB.
 - Student cannot upload more than three resumes.
 - Pending resumes cannot be used for applications.

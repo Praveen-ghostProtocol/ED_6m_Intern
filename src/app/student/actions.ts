@@ -1,10 +1,14 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { getStudentByProfileId } from "@/lib/student/queries";
+import { requireStudent } from "@/lib/student/guards";
+import {
+  branchSpecialisations,
+  genderOptions
+} from "@/types/student";
 
 export type StudentActionState = {
   error?: string;
@@ -13,21 +17,98 @@ export type StudentActionState = {
 
 const uuidSchema = z.string().uuid();
 const maxResumeSizeBytes = 5 * 1024 * 1024;
+const optionalTextSchema = z.string().trim().transform((value) => (value.length > 0 ? value : null));
+const requiredTextSchema = z.string().trim().min(1, "Fill all required fields.");
+const pincodeSchema = z.string().trim().regex(/^\d{4,10}$/, "Use a valid pincode.");
+const cgpaSchema = z.coerce.number().min(0, "CGPA must be at least 0.").max(10, "CGPA cannot exceed 10.");
+const profileSchema = z.object({
+  fullName: requiredTextSchema.max(120),
+  phone: requiredTextSchema.max(24),
+  alternatePhone: optionalTextSchema,
+  alternateEmail: z.string().trim().email("Use a valid alternate email.").optional().or(z.literal("")).transform((value) => value || null),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date of birth."),
+  gender: z.enum(genderOptions),
+  currentAddressPincode: pincodeSchema,
+  currentAddress: requiredTextSchema.max(800),
+  permanentAddressPincode: pincodeSchema,
+  permanentAddress: requiredTextSchema.max(800),
+  branchSpecialisation: z.enum(branchSpecialisations),
+  cgpa: cgpaSchema
+});
 
 function sanitizeFileName(fileName: string) {
   const cleaned = fileName.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
   return cleaned || "resume.pdf";
 }
 
-async function requireStudentContext() {
-  const profile = await requireRole("student");
-  const student = await getStudentByProfileId(profile.id);
+function formText(formData: FormData, name: string) {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
+}
 
-  if (!student) {
-    throw new Error("Your student profile has not been imported yet.");
+async function requireStudentContext() {
+  return requireStudent();
+}
+
+export async function updateStudentProfile(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  const { profile, student } = await requireStudent({ allowIncomplete: true });
+  const parsed = profileSchema.safeParse({
+    fullName: formText(formData, "fullName"),
+    phone: formText(formData, "phone"),
+    alternatePhone: formText(formData, "alternatePhone"),
+    alternateEmail: formText(formData, "alternateEmail"),
+    dateOfBirth: formText(formData, "dateOfBirth"),
+    gender: formText(formData, "gender"),
+    currentAddressPincode: formText(formData, "currentAddressPincode"),
+    currentAddress: formText(formData, "currentAddress"),
+    permanentAddressPincode: formText(formData, "permanentAddressPincode"),
+    permanentAddress: formText(formData, "permanentAddress"),
+    branchSpecialisation: formText(formData, "branchSpecialisation"),
+    cgpa: formText(formData, "cgpa")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the profile details and try again." };
   }
 
-  return { profile, student };
+  const supabase = await createClient();
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ full_name: parsed.data.fullName })
+    .eq("id", profile.id);
+
+  if (profileError) {
+    return { error: profileError.message };
+  }
+
+  const { error: studentError } = await supabase
+    .from("students")
+    .update({
+      phone: parsed.data.phone,
+      alternate_phone: parsed.data.alternatePhone,
+      alternate_email: parsed.data.alternateEmail,
+      date_of_birth: parsed.data.dateOfBirth,
+      gender: parsed.data.gender,
+      current_address_pincode: parsed.data.currentAddressPincode,
+      current_address: parsed.data.currentAddress,
+      permanent_address_pincode: parsed.data.permanentAddressPincode,
+      permanent_address: parsed.data.permanentAddress,
+      branch_specialisation: parsed.data.branchSpecialisation,
+      cgpa: parsed.data.cgpa,
+      profile_completed_at: new Date().toISOString()
+    })
+    .eq("id", student.id);
+
+  if (studentError) {
+    return { error: studentError.message };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/student/profile");
+  redirect("/student");
 }
 
 export async function uploadResume(
