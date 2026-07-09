@@ -7,6 +7,10 @@ import type {
   VerifiedResumeChoice
 } from "@/types/student";
 
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
 export async function getStudentByProfileId(profileId: string): Promise<StudentRecord | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -73,34 +77,56 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
     supabase
       .from("internship_roles")
       .select(
-        "id,company_id,title,duration,stipend,location,eligibility,job_description,selection_process,gd_applicable,deadline,companies(name)"
+        "id,company_id,title,duration,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,gd_applicable,deadline,companies(name)"
       )
       .eq("status", "open")
       .order("deadline", { ascending: true, nullsFirst: false }),
-    supabase.from("applications").select("role_id").eq("student_id", studentId)
+    supabase
+      .from("applications")
+      .select("id,role_id,resume_id,resumes(file_name)")
+      .eq("student_id", studentId)
   ]);
 
-  const appliedRoleIds = new Set((applications ?? []).map((application) => application.role_id as string));
-
-  return (roles ?? []).map((role) => {
-    const company = Array.isArray(role.companies) ? role.companies[0] : role.companies;
-
-    return {
-      id: role.id as string,
-      company_id: role.company_id as string,
-      company_name: (company?.name as string | undefined) ?? "Company",
-      title: role.title as string,
-      duration: (role.duration as string | null) ?? null,
-      stipend: (role.stipend as string | null) ?? null,
-      location: (role.location as string | null) ?? null,
-      eligibility: (role.eligibility as string | null) ?? null,
-      job_description: role.job_description as string,
-      selection_process: (role.selection_process as string | null) ?? null,
-      gd_applicable: Boolean(role.gd_applicable),
-      deadline: (role.deadline as string | null) ?? null,
-      has_applied: appliedRoleIds.has(role.id as string)
-    };
+  const applicationByRole = new Map<string, { id: string; resume_id: string; resume_file_name: string | null }>();
+  (applications ?? []).forEach((application) => {
+    const resume = one(application.resumes) as Record<string, unknown> | null;
+    applicationByRole.set(application.role_id as string, {
+      id: application.id as string,
+      resume_id: application.resume_id as string,
+      resume_file_name: (resume?.file_name as string | undefined) ?? null
+    });
   });
+
+  return Promise.all(
+    (roles ?? []).map(async (role) => {
+      const company = one(role.companies) as Record<string, unknown> | null;
+      const application = applicationByRole.get(role.id as string) ?? null;
+      const jdStoragePath = role.jd_storage_path as string | null;
+      const signed = jdStoragePath
+        ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
+        : { data: null };
+
+      return {
+        id: role.id as string,
+        company_id: role.company_id as string,
+        company_name: (company?.name as string | undefined) ?? "Company",
+        title: role.title as string,
+        duration: (role.duration as string | null) ?? null,
+        location: (role.location as string | null) ?? null,
+        eligibility: (role.eligibility as string | null) ?? null,
+        job_description: role.job_description as string,
+        jd_file_name: (role.jd_file_name as string | null) ?? null,
+        jd_signed_url: signed.data?.signedUrl ?? null,
+        selection_process: (role.selection_process as string | null) ?? null,
+        gd_applicable: Boolean(role.gd_applicable),
+        deadline: (role.deadline as string | null) ?? null,
+        application_id: application?.id ?? null,
+        application_resume_id: application?.resume_id ?? null,
+        application_resume_file_name: application?.resume_file_name ?? null,
+        has_applied: Boolean(application)
+      };
+    })
+  );
 }
 
 export async function getStudentApplications(studentId: string): Promise<StudentApplication[]> {
@@ -118,11 +144,9 @@ export async function getStudentApplications(studentId: string): Promise<Student
   }
 
   return data.map((application) => {
-    const role = Array.isArray(application.internship_roles)
-      ? application.internship_roles[0]
-      : application.internship_roles;
-    const company = Array.isArray(role?.companies) ? role?.companies[0] : role?.companies;
-    const resume = Array.isArray(application.resumes) ? application.resumes[0] : application.resumes;
+    const role = one(application.internship_roles) as Record<string, unknown> | null;
+    const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+    const resume = one(application.resumes) as Record<string, unknown> | null;
 
     return {
       id: application.id as string,

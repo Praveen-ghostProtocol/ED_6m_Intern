@@ -65,7 +65,7 @@ export function RoleForm({ companies }: { companies: OrganizerCompany[] }) {
   const [state, action] = useActionState(createInternshipRole, {});
 
   return (
-    <form action={action} className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
+    <form action={action} className="rounded-portal border border-portal-line bg-white p-5 shadow-sm" encType="multipart/form-data">
       <div className="mb-4 flex items-center gap-2">
         <BriefcaseBusiness className="h-5 w-5 text-portal-blue" aria-hidden="true" />
         <h2 className="text-base font-semibold">Create Internship Role</h2>
@@ -121,10 +121,16 @@ export function RoleForm({ companies }: { companies: OrganizerCompany[] }) {
           <textarea className="min-h-24 rounded-portal border border-portal-line px-3 py-2 text-sm" name="selectionProcess" />
         </label>
       </div>
-      <label className="mt-4 flex flex-col gap-2 text-sm font-medium">
-        Job description
-        <textarea className="min-h-28 rounded-portal border border-portal-line px-3 py-2 text-sm" name="jobDescription" required />
-      </label>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm font-medium">
+          JD PDF
+          <input className="rounded-portal border border-portal-line px-3 py-2 text-sm" accept="application/pdf" name="jdPdf" type="file" />
+        </label>
+        <label className="flex flex-col gap-2 text-sm font-medium">
+          Job description text
+          <textarea className="min-h-28 rounded-portal border border-portal-line px-3 py-2 text-sm" name="jobDescription" placeholder="Optional if a JD PDF is uploaded" />
+        </label>
+      </div>
       <div className="mt-4"><SubmitButton label="Create role" pendingLabel="Creating" /></div>
       <ActionMessage state={state} />
     </form>

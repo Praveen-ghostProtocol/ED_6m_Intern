@@ -50,27 +50,38 @@ export async function getAssignedRolesForRecruiter(recruiterId: string): Promise
   const supabase = await createClient();
   const { data } = await supabase
     .from("recruiter_role_assignments")
-    .select("role_id,internship_roles(id,company_id,title,duration,stipend,location,deadline,gd_applicable,status,companies(name))")
+    .select("role_id,internship_roles(id,company_id,title,duration,stipend,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,deadline,gd_applicable,status,companies(name))")
     .eq("recruiter_id", recruiterId)
     .order("created_at", { ascending: false });
 
-  return (data ?? []).map((assignment) => {
-    const role = one(assignment.internship_roles) as Record<string, unknown> | null;
-    const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+  return Promise.all(
+    (data ?? []).map(async (assignment) => {
+      const role = one(assignment.internship_roles) as Record<string, unknown> | null;
+      const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+      const jdStoragePath = role?.jd_storage_path as string | null | undefined;
+      const signed = jdStoragePath
+        ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
+        : { data: null };
 
-    return {
-      id: (role?.id as string | undefined) ?? (assignment.role_id as string),
-      company_id: (role?.company_id as string | undefined) ?? "",
-      company_name: (company?.name as string | undefined) ?? "Company",
-      title: (role?.title as string | undefined) ?? "Role",
-      duration: (role?.duration as string | null | undefined) ?? null,
-      stipend: (role?.stipend as string | null | undefined) ?? null,
-      location: (role?.location as string | null | undefined) ?? null,
-      deadline: (role?.deadline as string | null | undefined) ?? null,
-      gd_applicable: Boolean(role?.gd_applicable),
-      status: (role?.status as RecruiterRole["status"] | undefined) ?? "draft"
-    };
-  });
+      return {
+        id: (role?.id as string | undefined) ?? (assignment.role_id as string),
+        company_id: (role?.company_id as string | undefined) ?? "",
+        company_name: (company?.name as string | undefined) ?? "Company",
+        title: (role?.title as string | undefined) ?? "Role",
+        duration: (role?.duration as string | null | undefined) ?? null,
+        stipend: (role?.stipend as string | null | undefined) ?? null,
+        location: (role?.location as string | null | undefined) ?? null,
+        eligibility: (role?.eligibility as string | null | undefined) ?? null,
+        job_description: (role?.job_description as string | undefined) ?? "",
+        jd_file_name: (role?.jd_file_name as string | null | undefined) ?? null,
+        jd_signed_url: signed.data?.signedUrl ?? null,
+        selection_process: (role?.selection_process as string | null | undefined) ?? null,
+        deadline: (role?.deadline as string | null | undefined) ?? null,
+        gd_applicable: Boolean(role?.gd_applicable),
+        status: (role?.status as RecruiterRole["status"] | undefined) ?? "draft"
+      };
+    })
+  );
 }
 
 export async function getApplicationsForRecruiter(recruiterId: string): Promise<RecruiterApplication[]> {

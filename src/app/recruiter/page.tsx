@@ -13,21 +13,21 @@ export default async function RecruiterDashboard() {
 
   if (!recruiter) {
     return (
-      <PortalShell navigation={recruiterNavigation} profile={profile} subtitle="Your recruiter account is active, but company details still need to be assigned." title="Recruiter Dashboard">
-        <EmptyState title="Recruiter profile not found" description="Ask the internship organizer to link this login to a company and assigned roles." />
+      <PortalShell navigation={recruiterNavigation} profile={profile} subtitle="Your company account is active, but company details still need to be assigned." title="Company Dashboard">
+        <EmptyState title="Company profile not found" description="Ask the internship organizer to link this login to a company." />
       </PortalShell>
     );
   }
 
   const stats = await getRecruiterDashboardStats(recruiter.id);
   const cards = [
-    { label: "Assigned roles", value: stats.assignedRoles.toString(), icon: BriefcaseBusiness, tone: "bg-portal-sky text-portal-blue" },
+    { label: "Company roles", value: stats.assignedRoles.toString(), icon: BriefcaseBusiness, tone: "bg-portal-sky text-portal-blue" },
     { label: "Applicants", value: stats.applicants.toString(), icon: UsersRound, tone: "bg-portal-mint text-portal-teal" },
     { label: "Pending decisions", value: stats.pendingDecisions.toString(), icon: ListChecks, tone: "bg-portal-peach text-amber-700" }
   ];
 
   return (
-    <PortalShell navigation={recruiterNavigation} profile={profile} subtitle={`Review assigned roles and applicants for ${recruiter.company_name}.`} title="Recruiter Dashboard">
+    <PortalShell navigation={recruiterNavigation} profile={profile} subtitle={`Review roles and applicants for ${recruiter.company_name}.`} title="Company Dashboard">
       <section className="grid gap-4 md:grid-cols-3">
         {cards.map((card) => {
           const Icon = card.icon;

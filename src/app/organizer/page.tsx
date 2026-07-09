@@ -17,7 +17,7 @@ export default async function OrganizerDashboard() {
   ];
 
   return (
-    <PortalShell navigation={organizerNavigation} profile={profile} subtitle="Control student access, resume verification, companies, recruiters, and reports." title="Organizer Dashboard">
+    <PortalShell navigation={organizerNavigation} profile={profile} subtitle="Control student access, resume verification, companies, company accounts, and reports." title="Organizer Dashboard">
       <section className="grid gap-4 md:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;

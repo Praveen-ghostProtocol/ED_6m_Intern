@@ -26,6 +26,11 @@ export type RecruiterRole = {
   duration: string | null;
   stipend: string | null;
   location: string | null;
+  eligibility: string | null;
+  job_description: string;
+  jd_file_name: string | null;
+  jd_signed_url: string | null;
+  selection_process: string | null;
   deadline: string | null;
   gd_applicable: boolean;
   status: RoleStatus;

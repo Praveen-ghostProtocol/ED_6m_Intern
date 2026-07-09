@@ -55,6 +55,8 @@ export type OrganizerRole = {
   duration: string | null;
   stipend: string | null;
   location: string | null;
+  jd_file_name: string | null;
+  jd_signed_url: string | null;
   deadline: string | null;
   gd_applicable: boolean;
   status: RoleStatus;
@@ -65,6 +67,7 @@ export type OrganizerApplication = {
   student_roll_number: string;
   student_email: string;
   student_name: string | null;
+  role_id: string;
   company_name: string;
   role_title: string;
   resume_file_name: string;

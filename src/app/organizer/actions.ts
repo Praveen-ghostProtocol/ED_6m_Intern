@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { getOptionalPdfFile, uploadJobDescriptionPdf } from "@/lib/job-description-files";
 import type { ApplicationStatus } from "@/types/student";
 import type { RoleStatus } from "@/types/organizer";
 
@@ -123,13 +124,18 @@ export async function createInternshipRole(
   const status = roleStatusSchema.safeParse(formData.get("status"));
   const title = textValue(formData, "title");
   const jobDescription = textValue(formData, "jobDescription");
+  const jdPdf = getOptionalPdfFile(formData, "jdPdf");
 
   if (!companyId.success) return { error: "Choose a valid company." };
   if (!status.success) return { error: "Choose a valid role status." };
   if (title.length < 2) return { error: "Role title is required." };
-  if (jobDescription.length < 10) return { error: "Job description must be at least 10 characters." };
+  if (jobDescription.length < 10 && !jdPdf) return { error: "Add a JD PDF or enter a job description." };
 
   const supabase = await createClient();
+  const uploadedJd = jdPdf ? await uploadJobDescriptionPdf(supabase, jdPdf, companyId.data) : { data: null, error: null };
+
+  if (uploadedJd.error) return { error: uploadedJd.error };
+
   const { error } = await supabase.from("internship_roles").insert({
     company_id: companyId.data,
     title,
@@ -137,7 +143,10 @@ export async function createInternshipRole(
     stipend: nullableText(formData, "stipend"),
     location: nullableText(formData, "location"),
     eligibility: nullableText(formData, "eligibility"),
-    job_description: jobDescription,
+    job_description: jobDescription || "JD uploaded as PDF.",
+    jd_file_name: uploadedJd.data?.fileName ?? null,
+    jd_storage_path: uploadedJd.data?.storagePath ?? null,
+    jd_file_size_bytes: uploadedJd.data?.fileSizeBytes ?? null,
     selection_process: nullableText(formData, "selectionProcess"),
     gd_applicable: formData.get("gdApplicable") === "on",
     deadline: dateToDeadline(textValue(formData, "deadline")),
@@ -145,7 +154,13 @@ export async function createInternshipRole(
     created_by: profile.id
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (uploadedJd.data?.storagePath) {
+      await supabase.storage.from("job-descriptions").remove([uploadedJd.data.storagePath]);
+    }
+
+    return { error: error.message };
+  }
 
   revalidatePath("/organizer");
   revalidatePath("/organizer/roles");

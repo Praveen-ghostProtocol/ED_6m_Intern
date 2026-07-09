@@ -17,9 +17,9 @@ export const studentNavigation = [
 
 export const recruiterNavigation = [
   { label: "Dashboard", href: "/recruiter" },
-  { label: "Roles", href: "/recruiter/roles" },
+  { label: "Company Roles", href: "/recruiter/roles" },
   { label: "Applications", href: "/recruiter/applications" },
-  { label: "Profile", href: "/recruiter/profile" }
+  { label: "Company Account", href: "/recruiter/profile" }
 ];
 
 export const organizerNavigation = [
@@ -28,6 +28,6 @@ export const organizerNavigation = [
   { label: "Resume Verification", href: "/organizer/resumes" },
   { label: "Companies & Roles", href: "/organizer/roles" },
   { label: "Applications", href: "/organizer/applications" },
-  { label: "Recruiters", href: "/organizer/recruiters" },
+  { label: "Company Accounts", href: "/organizer/recruiters" },
   { label: "Reports", href: "/organizer/reports" }
 ];

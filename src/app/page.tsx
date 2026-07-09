@@ -8,13 +8,13 @@ const portals = [
     icon: UserRound
   },
   {
-    title: "Recruiter Portal",
-    description: "Review applicants only for assigned roles and update shortlist stages.",
+    title: "Company Portal",
+    description: "Create roles, review applicants role-wise, and update shortlist stages.",
     icon: Building2
   },
   {
     title: "Organizer Portal",
-    description: "Manage students, resume verification, roles, recruiters, and reports.",
+    description: "Manage students, resume verification, roles, company accounts, and reports.",
     icon: LayoutDashboard
   }
 ];
@@ -32,7 +32,7 @@ export default function Home() {
               Internship Portal
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-portal-muted">
-              A light, role-based workspace for students, recruiters, and the internship team.
+              A light, role-based workspace for students, companies, and the internship team.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

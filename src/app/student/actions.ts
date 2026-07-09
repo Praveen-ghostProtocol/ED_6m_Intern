@@ -48,8 +48,45 @@ function formText(formData: FormData, name: string) {
   return typeof value === "string" ? value : "";
 }
 
+function isDeadlinePassed(deadline: string | null | undefined) {
+  return Boolean(deadline && new Date(deadline) < new Date());
+}
+
 async function requireStudentContext() {
   return requireStudent();
+}
+
+async function validateVerifiedResume(studentId: string, resumeId: string) {
+  const supabase = await createClient();
+  const { data: resume } = await supabase
+    .from("resumes")
+    .select("id,status,student_id")
+    .eq("id", resumeId)
+    .eq("student_id", studentId)
+    .single();
+
+  return Boolean(resume && resume.status === "verified");
+}
+
+async function getOpenRole(roleId: string) {
+  const supabase = await createClient();
+  const { data: role } = await supabase
+    .from("internship_roles")
+    .select("id,status,deadline,gd_applicable")
+    .eq("id", roleId)
+    .single();
+
+  return role;
+}
+
+function revalidateStudentApplicationPaths() {
+  revalidatePath("/student");
+  revalidatePath("/student/companies");
+  revalidatePath("/student/applications");
+  revalidatePath("/recruiter");
+  revalidatePath("/recruiter/applications");
+  revalidatePath("/organizer/applications");
+  revalidatePath("/organizer/reports");
 }
 
 export async function updateStudentProfile(
@@ -213,32 +250,24 @@ export async function applyToRole(
     return { error: "Choose a valid role and verified resume." };
   }
 
-  const supabase = await createClient();
-  const { data: resume } = await supabase
-    .from("resumes")
-    .select("id,status,student_id")
-    .eq("id", resumeResult.data)
-    .eq("student_id", studentId)
-    .single();
+  const [resumeIsVerified, role] = await Promise.all([
+    validateVerifiedResume(studentId, resumeResult.data),
+    getOpenRole(roleResult.data)
+  ]);
 
-  if (!resume || resume.status !== "verified") {
+  if (!resumeIsVerified) {
     return { error: "Only verified resumes can be used for applications." };
   }
-
-  const { data: role } = await supabase
-    .from("internship_roles")
-    .select("id,status,deadline,gd_applicable")
-    .eq("id", roleResult.data)
-    .single();
 
   if (!role || role.status !== "open") {
     return { error: "This role is not open for applications." };
   }
 
-  if (role.deadline && new Date(role.deadline as string) < new Date()) {
+  if (isDeadlinePassed(role.deadline as string | null)) {
     return { error: "The application deadline has passed." };
   }
 
+  const supabase = await createClient();
   const { error } = await supabase.from("applications").insert({
     student_id: studentId,
     role_id: roleResult.data,
@@ -248,15 +277,133 @@ export async function applyToRole(
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "You have already applied for this role." };
+      return { error: "You have already registered for this role." };
     }
 
     return { error: error.message };
   }
 
-  revalidatePath("/student");
-  revalidatePath("/student/companies");
-  revalidatePath("/student/applications");
+  revalidateStudentApplicationPaths();
+  return { success: "Registration submitted successfully." };
+}
 
-  return { success: "Application submitted successfully." };
+export async function updateApplicationResume(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  let studentId: string;
+
+  try {
+    const context = await requireStudentContext();
+    studentId = context.student.id;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not confirm student access." };
+  }
+
+  const applicationResult = uuidSchema.safeParse(formData.get("applicationId"));
+  const resumeResult = uuidSchema.safeParse(formData.get("resumeId"));
+
+  if (!applicationResult.success || !resumeResult.success) {
+    return { error: "Choose a valid application and verified resume." };
+  }
+
+  const supabase = await createClient();
+  const { data: application } = await supabase
+    .from("applications")
+    .select("id,student_id,role_id,internship_roles(status,deadline)")
+    .eq("id", applicationResult.data)
+    .eq("student_id", studentId)
+    .single();
+
+  if (!application) {
+    return { error: "Application not found." };
+  }
+
+  const role = Array.isArray(application.internship_roles)
+    ? application.internship_roles[0]
+    : application.internship_roles;
+
+  if (!role || role.status !== "open") {
+    return { error: "This role is not open for resume changes." };
+  }
+
+  if (isDeadlinePassed(role.deadline as string | null)) {
+    return { error: "The application deadline has passed." };
+  }
+
+  const resumeIsVerified = await validateVerifiedResume(studentId, resumeResult.data);
+
+  if (!resumeIsVerified) {
+    return { error: "Only verified resumes can be used for applications." };
+  }
+
+  const { error } = await supabase
+    .from("applications")
+    .update({ resume_id: resumeResult.data })
+    .eq("id", applicationResult.data)
+    .eq("student_id", studentId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateStudentApplicationPaths();
+  return { success: "Registered resume updated." };
+}
+
+export async function removeApplication(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  let studentId: string;
+
+  try {
+    const context = await requireStudentContext();
+    studentId = context.student.id;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not confirm student access." };
+  }
+
+  const applicationResult = uuidSchema.safeParse(formData.get("applicationId"));
+
+  if (!applicationResult.success) {
+    return { error: "Choose a valid application." };
+  }
+
+  const supabase = await createClient();
+  const { data: application } = await supabase
+    .from("applications")
+    .select("id,student_id,internship_roles(status,deadline)")
+    .eq("id", applicationResult.data)
+    .eq("student_id", studentId)
+    .single();
+
+  if (!application) {
+    return { error: "Application not found." };
+  }
+
+  const role = Array.isArray(application.internship_roles)
+    ? application.internship_roles[0]
+    : application.internship_roles;
+
+  if (!role || role.status !== "open") {
+    return { error: "This role is not open for removal." };
+  }
+
+  if (isDeadlinePassed(role.deadline as string | null)) {
+    return { error: "The application deadline has passed." };
+  }
+
+  const { error } = await supabase
+    .from("applications")
+    .delete()
+    .eq("id", applicationResult.data)
+    .eq("student_id", studentId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateStudentApplicationPaths();
+  return { success: "Registration removed. You can register again before the deadline." };
 }

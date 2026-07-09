@@ -20,7 +20,7 @@ export default async function LoginPage({
               Internship Portal Login
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-700">
-              Students, recruiters, and organizers use one secure entry point. Access after login is decided by your assigned role.
+              Students, company accounts, and organizers use one secure entry point. Access after login is decided by your assigned role.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-portal border border-blue-200 bg-white/70 px-4 py-3 text-sm text-slate-700">

@@ -8,6 +8,7 @@ const requiredFiles = [
   "supabase/migrations/003_api_grants_and_rls_fix.sql",
   "supabase/migrations/004_service_role_grants.sql",
   "supabase/migrations/005_student_profile_details.sql",
+  "supabase/migrations/006_job_description_and_application_controls.sql",
   "supabase/seed/students.csv",
   "scripts/provision-students.mjs",
   "scripts/provision-test-users.mjs",

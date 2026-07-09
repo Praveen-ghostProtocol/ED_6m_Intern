@@ -57,13 +57,17 @@ export type CompanyRole = {
   company_name: string;
   title: string;
   duration: string | null;
-  stipend: string | null;
   location: string | null;
   eligibility: string | null;
   job_description: string;
+  jd_file_name: string | null;
+  jd_signed_url: string | null;
   selection_process: string | null;
   gd_applicable: boolean;
   deadline: string | null;
+  application_id: string | null;
+  application_resume_id: string | null;
+  application_resume_file_name: string | null;
   has_applied: boolean;
 };
 

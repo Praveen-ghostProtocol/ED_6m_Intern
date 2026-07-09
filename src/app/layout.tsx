@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Engineering Design Internship Portal",
-  description: "Role-based internship portal for students, recruiters, and organizers."
+  description: "Role-based internship portal for students, companies, and organizers."
 };
 
 export default function RootLayout({

@@ -12,9 +12,9 @@ export default async function RecruiterProfilePage() {
   const roles = recruiter ? await getAssignedRolesForRecruiter(recruiter.id) : [];
 
   return (
-    <PortalShell navigation={recruiterNavigation} profile={profile} subtitle="View your recruiter account, company, and assigned roles." title="Profile">
+    <PortalShell navigation={recruiterNavigation} profile={profile} subtitle="View your company account and roles." title="Company Account">
       {!recruiter ? (
-        <EmptyState title="Recruiter profile not found" description="Ask the internship organizer to link this login to a company." />
+        <EmptyState title="Company profile not found" description="Ask the internship organizer to link this login to a company." />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
@@ -29,9 +29,9 @@ export default async function RecruiterProfilePage() {
           </section>
 
           <section className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold">Assigned Roles</h2>
+            <h2 className="text-base font-semibold">Company Roles</h2>
             {roles.length === 0 ? (
-              <p className="mt-4 text-sm text-portal-muted">No roles assigned yet.</p>
+              <p className="mt-4 text-sm text-portal-muted">No company roles yet.</p>
             ) : (
               <ul className="mt-4 space-y-3">
                 {roles.map((role) => (

@@ -129,32 +129,40 @@ export async function getRolesForOrganizer(): Promise<OrganizerRole[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("internship_roles")
-    .select("id,company_id,title,duration,stipend,location,deadline,gd_applicable,status,companies(name)")
+    .select("id,company_id,title,duration,stipend,location,jd_file_name,jd_storage_path,deadline,gd_applicable,status,companies(name)")
     .order("created_at", { ascending: false });
 
-  return (data ?? []).map((role) => {
-    const company = one(role.companies) as Record<string, unknown> | null;
+  return Promise.all(
+    (data ?? []).map(async (role) => {
+      const company = one(role.companies) as Record<string, unknown> | null;
+      const jdStoragePath = role.jd_storage_path as string | null;
+      const signed = jdStoragePath
+        ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
+        : { data: null };
 
-    return {
-      id: role.id as string,
-      company_id: role.company_id as string,
-      company_name: (company?.name as string | undefined) ?? "Company",
-      title: role.title as string,
-      duration: (role.duration as string | null) ?? null,
-      stipend: (role.stipend as string | null) ?? null,
-      location: (role.location as string | null) ?? null,
-      deadline: (role.deadline as string | null) ?? null,
-      gd_applicable: Boolean(role.gd_applicable),
-      status: role.status as OrganizerRole["status"]
-    };
-  });
+      return {
+        id: role.id as string,
+        company_id: role.company_id as string,
+        company_name: (company?.name as string | undefined) ?? "Company",
+        title: role.title as string,
+        duration: (role.duration as string | null) ?? null,
+        stipend: (role.stipend as string | null) ?? null,
+        location: (role.location as string | null) ?? null,
+        jd_file_name: (role.jd_file_name as string | null) ?? null,
+        jd_signed_url: signed.data?.signedUrl ?? null,
+        deadline: (role.deadline as string | null) ?? null,
+        gd_applicable: Boolean(role.gd_applicable),
+        status: role.status as OrganizerRole["status"]
+      };
+    })
+  );
 }
 
 export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplication[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")
-    .select("id,applied_at,resume_shortlist_status,test_status,gd_status,offer_status,students(roll_number,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_status,gd_status,offer_status,students(roll_number,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
     .order("applied_at", { ascending: false });
 
   return (data ?? []).map((application) => {
@@ -169,6 +177,7 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
       student_roll_number: (student?.roll_number as string | undefined) ?? "",
       student_email: (profile?.email as string | undefined) ?? "",
       student_name: (profile?.full_name as string | null | undefined) ?? null,
+      role_id: application.role_id as string,
       company_name: (company?.name as string | undefined) ?? "Company",
       role_title: (role?.title as string | undefined) ?? "Role",
       resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
