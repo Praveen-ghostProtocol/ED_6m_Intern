@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { updateApplicationStage } from "@/app/organizer/actions";
+import { UploadCloud } from "lucide-react";
+import { updateApplicationsForRole } from "@/app/organizer/actions";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { StatusBadge } from "@/components/student/StatusBadge";
@@ -11,8 +12,12 @@ import type { ApplicationStatus } from "@/types/student";
 
 export const dynamic = "force-dynamic";
 
-const statuses: ApplicationStatus[] = ["pending", "shortlisted", "rejected", "not_applicable", "selected", "offer_given"];
-const statusLabels: Record<ApplicationStatus, string> = { pending: "Pending", shortlisted: "Shortlisted", rejected: "Rejected", not_applicable: "Not Applicable", selected: "Selected", offer_given: "Offer Given" };
+const statusLabels: Record<ApplicationStatus, string> = { pending: "No decision", shortlisted: "Shortlisted", rejected: "Rejected", not_applicable: "Not Applicable", selected: "Selected", offer_given: "Offer Given" };
+const baseStatuses: ApplicationStatus[] = ["pending", "shortlisted", "rejected"];
+const gdStatuses: ApplicationStatus[] = ["pending", "shortlisted", "rejected", "not_applicable"];
+const offerStatuses: ApplicationStatus[] = ["pending", "selected", "offer_given", "rejected"];
+
+type StageField = "resume_shortlist_status" | "test_status" | "gd_status" | "offer_status";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
@@ -21,15 +26,45 @@ function formatDate(value: string) {
 function isPendingDecision(application: OrganizerApplication) {
   return (
     application.resume_shortlist_status === "pending" ||
+    application.test_attended === null ||
     application.test_status === "pending" ||
     application.offer_status === "pending" ||
     (application.gd_applicable && application.gd_status === "pending")
   );
 }
 
-function StageForm({ applicationId, fieldName, value, disabledStatuses = [] }: { applicationId: string; fieldName: string; value: ApplicationStatus; disabledStatuses?: ApplicationStatus[] }) {
+function statusesFor(fieldName: StageField, gdApplicable?: boolean) {
+  if (fieldName === "offer_status") return offerStatuses;
+  if (fieldName === "gd_status") return gdApplicable ? gdStatuses : ["not_applicable" as ApplicationStatus];
+  return baseStatuses;
+}
+
+function StageSelect({ application, fieldName, label }: { application: OrganizerApplication; fieldName: StageField; label: string }) {
+  const options = statusesFor(fieldName, application.gd_applicable);
+  const disabled = fieldName === "gd_status" && !application.gd_applicable;
+
   return (
-    <form action={updateApplicationStage} className="mt-2 flex gap-2"><input name="applicationId" type="hidden" value={applicationId} /><input name="fieldName" type="hidden" value={fieldName} /><select className="h-8 rounded-portal border border-portal-line px-2 text-xs" name="status" defaultValue={value}>{statuses.filter((status) => !disabledStatuses.includes(status)).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select><button className="h-8 rounded-portal border border-portal-line px-2 text-xs font-semibold text-portal-blue" type="submit">Save</button></form>
+    <label className="flex flex-col gap-2 text-xs font-semibold uppercase text-portal-muted">
+      {label}
+      <select className="h-9 rounded-portal border border-portal-line px-2 text-sm font-normal normal-case text-portal-ink" defaultValue={application[fieldName]} disabled={disabled} name={`${fieldName}:${application.id}`}>
+        {options.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
+      </select>
+      <StatusBadge status={application[fieldName]} />
+    </label>
+  );
+}
+
+function TestAttendedSelect({ application }: { application: OrganizerApplication }) {
+  return (
+    <label className="flex flex-col gap-2 text-xs font-semibold uppercase text-portal-muted">
+      Test Attended
+      <select className="h-9 rounded-portal border border-portal-line px-2 text-sm font-normal normal-case text-portal-ink" defaultValue={application.test_attended === null ? "unset" : String(application.test_attended)} name={`test_attended:${application.id}`}>
+        <option value="unset">-</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+      <span className="text-sm font-semibold normal-case text-portal-ink">{application.test_attended === null ? "-" : application.test_attended ? "Yes" : "No"}</span>
+    </label>
   );
 }
 
@@ -61,6 +96,7 @@ function RoleCards({ applications, roles }: { applications: OrganizerApplication
 function ApplicationCard({ application }: { application: OrganizerApplication }) {
   return (
     <article className="rounded-portal border border-portal-line bg-white p-5 shadow-sm" key={application.id}>
+      <input name="applicationId" type="hidden" value={application.id} />
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{application.student_name ?? application.student_email}</h2>
@@ -68,11 +104,12 @@ function ApplicationCard({ application }: { application: OrganizerApplication })
           <p className="mt-1 text-xs text-portal-muted">{application.student_email}</p>
         </div>
       </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-4">
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Resume</p><div className="mt-2"><StatusBadge status={application.resume_shortlist_status} /></div><StageForm applicationId={application.id} fieldName="resume_shortlist_status" value={application.resume_shortlist_status} disabledStatuses={["not_applicable", "selected", "offer_given"]} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Test</p><div className="mt-2"><StatusBadge status={application.test_status} /></div><StageForm applicationId={application.id} fieldName="test_status" value={application.test_status} disabledStatuses={["not_applicable", "selected", "offer_given"]} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">GD</p><div className="mt-2"><StatusBadge status={application.gd_status} /></div><StageForm applicationId={application.id} fieldName="gd_status" value={application.gd_status} disabledStatuses={application.gd_applicable ? ["selected", "offer_given"] : ["pending", "shortlisted", "rejected", "selected", "offer_given"]} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Offer</p><div className="mt-2"><StatusBadge status={application.offer_status} /></div><StageForm applicationId={application.id} fieldName="offer_status" value={application.offer_status} disabledStatuses={["not_applicable", "shortlisted"]} /></div>
+      <div className="mt-5 grid gap-4 md:grid-cols-5">
+        <StageSelect application={application} fieldName="resume_shortlist_status" label="Resume Shortlist" />
+        <TestAttendedSelect application={application} />
+        <StageSelect application={application} fieldName="test_status" label="Test Shortlist" />
+        <StageSelect application={application} fieldName="gd_status" label="GD Shortlist" />
+        <StageSelect application={application} fieldName="offer_status" label="Offer" />
       </div>
     </article>
   );
@@ -110,7 +147,17 @@ export default async function OrganizerApplicationsPage({ searchParams }: { sear
         </form>
       </div>
       {applications.length === 0 ? <EmptyState title="No applications found" description="Student applications for this role will appear after students register." /> : (
-        <div className="space-y-4">{applications.map((application) => <ApplicationCard application={application} key={application.id} />)}</div>
+        <form action={updateApplicationsForRole} className="space-y-4">
+          <input name="roleId" type="hidden" value={selectedRole.id} />
+          <div className="flex flex-col gap-3 rounded-portal border border-portal-line bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-portal-muted">Review all changes for this role, then upload them to the student portal.</p>
+            <button className="inline-flex h-10 items-center justify-center gap-2 rounded-portal bg-portal-blue px-4 text-sm font-semibold text-white transition hover:bg-blue-700" type="submit">
+              <UploadCloud className="h-4 w-4" aria-hidden="true" />
+              Save and upload statuses
+            </button>
+          </div>
+          {applications.map((application) => <ApplicationCard application={application} key={application.id} />)}
+        </form>
       )}
     </PortalShell>
   );

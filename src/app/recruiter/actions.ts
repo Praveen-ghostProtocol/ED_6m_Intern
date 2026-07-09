@@ -123,6 +123,106 @@ export async function createCompanyRole(
 
   return { success: "Role created." };
 }
+const applicationStageFields = [
+  "resume_shortlist_status",
+  "test_status",
+  "gd_status",
+  "offer_status"
+] as const;
+
+function parseTestAttended(value: FormDataEntryValue | null) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
+}
+
+export async function updateRecruiterApplicationsForRole(formData: FormData) {
+  const { profile, recruiter } = await requireRecruiterContext();
+
+  if (!recruiter) {
+    return;
+  }
+
+  const roleId = uuidSchema.parse(formData.get("roleId"));
+  const applicationIds = formData.getAll("applicationId")
+    .filter((value): value is string => typeof value === "string")
+    .filter((value) => uuidSchema.safeParse(value).success);
+  const supabase = await createClient();
+
+  const { data: assignment } = await supabase
+    .from("recruiter_role_assignments")
+    .select("role_id")
+    .eq("recruiter_id", recruiter.id)
+    .eq("role_id", roleId)
+    .single();
+
+  if (!assignment || applicationIds.length === 0) {
+    return;
+  }
+
+  const { data: role } = await supabase
+    .from("internship_roles")
+    .select("gd_applicable")
+    .eq("id", roleId)
+    .single();
+
+  const { data: applications } = await supabase
+    .from("applications")
+    .select("id,role_id,resume_shortlist_status,test_attended,test_status,gd_status,offer_status")
+    .eq("role_id", roleId)
+    .in("id", applicationIds);
+
+  for (const application of applications ?? []) {
+    const applicationId = application.id as string;
+    const update: Record<string, ApplicationStatus | boolean | null> = {};
+    const historyRows: Array<{
+      application_id: string;
+      changed_by: string;
+      field_name: string;
+      old_status: ApplicationStatus | null;
+      new_status: ApplicationStatus;
+    }> = [];
+
+    const nextTestAttended = parseTestAttended(formData.get(`test_attended:${applicationId}`));
+    if ((application.test_attended as boolean | null) !== nextTestAttended) {
+      update.test_attended = nextTestAttended;
+    }
+
+    for (const fieldName of applicationStageFields) {
+      const submitted = formData.get(`${fieldName}:${applicationId}`);
+      const parsed = applicationStatusSchema.safeParse(submitted);
+      if (!parsed.success) continue;
+
+      const nextStatus = fieldName === "gd_status" && !role?.gd_applicable ? "not_applicable" : parsed.data;
+      const oldStatus = application[fieldName] as ApplicationStatus;
+
+      if (oldStatus !== nextStatus) {
+        update[fieldName] = nextStatus;
+        historyRows.push({
+          application_id: applicationId,
+          changed_by: profile.id,
+          field_name: fieldName,
+          old_status: oldStatus ?? null,
+          new_status: nextStatus
+        });
+      }
+    }
+
+    if (Object.keys(update).length > 0) {
+      await supabase.from("applications").update(update).eq("id", applicationId).eq("role_id", roleId);
+    }
+
+    if (historyRows.length > 0) {
+      await supabase.from("status_history").insert(historyRows);
+    }
+  }
+
+  revalidatePath("/recruiter");
+  revalidatePath("/recruiter/applications");
+  revalidatePath("/student/applications");
+  revalidatePath("/organizer/applications");
+  revalidatePath("/organizer/reports");
+}
 export async function updateRecruiterApplicationStage(formData: FormData) {
   const { profile, recruiter } = await requireRecruiterContext();
 

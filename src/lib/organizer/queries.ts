@@ -162,7 +162,7 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_status,gd_status,offer_status,students(roll_number,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
     .order("applied_at", { ascending: false });
 
   return (data ?? []).map((application) => {
@@ -184,6 +184,7 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
       applied_at: application.applied_at as string,
       gd_applicable: Boolean(role?.gd_applicable),
       resume_shortlist_status: application.resume_shortlist_status as OrganizerApplication["resume_shortlist_status"],
+      test_attended: (application.test_attended as boolean | null) ?? null,
       test_status: application.test_status as OrganizerApplication["test_status"],
       gd_status: application.gd_status as OrganizerApplication["gd_status"],
       offer_status: application.offer_status as OrganizerApplication["offer_status"]

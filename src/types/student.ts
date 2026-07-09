@@ -75,6 +75,7 @@ export type StudentApplication = {
   id: string;
   applied_at: string;
   resume_shortlist_status: ApplicationStatus;
+  test_attended: boolean | null;
   test_status: ApplicationStatus;
   gd_status: ApplicationStatus;
   offer_status: ApplicationStatus;

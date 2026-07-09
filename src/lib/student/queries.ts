@@ -134,7 +134,7 @@ export async function getStudentApplications(studentId: string): Promise<Student
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id,applied_at,resume_shortlist_status,test_status,gd_status,offer_status,internship_roles(title,companies(name)),resumes(file_name)"
+      "id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,internship_roles(title,companies(name)),resumes(file_name)"
     )
     .eq("student_id", studentId)
     .order("applied_at", { ascending: false });
@@ -152,6 +152,7 @@ export async function getStudentApplications(studentId: string): Promise<Student
       id: application.id as string,
       applied_at: application.applied_at as string,
       resume_shortlist_status: application.resume_shortlist_status,
+      test_attended: (application.test_attended as boolean | null) ?? null,
       test_status: application.test_status,
       gd_status: application.gd_status,
       offer_status: application.offer_status,

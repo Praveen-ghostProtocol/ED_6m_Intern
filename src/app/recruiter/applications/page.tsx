@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
-import { RecruiterStageForm } from "@/components/recruiter/RecruiterStageForm";
+import { ExternalLink, UploadCloud } from "lucide-react";
+import { updateRecruiterApplicationsForRole } from "@/app/recruiter/actions";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { StatusBadge } from "@/components/student/StatusBadge";
@@ -18,13 +18,18 @@ export const dynamic = "force-dynamic";
 
 const statusOptions: ApplicationStatus[] = ["pending", "shortlisted", "rejected", "not_applicable", "selected", "offer_given"];
 const statusLabels: Record<ApplicationStatus, string> = {
-  pending: "Pending",
+  pending: "No decision",
   shortlisted: "Shortlisted",
   rejected: "Rejected",
   not_applicable: "Not Applicable",
   selected: "Selected",
   offer_given: "Offer Given"
 };
+const baseStatuses: ApplicationStatus[] = ["pending", "shortlisted", "rejected"];
+const gdStatuses: ApplicationStatus[] = ["pending", "shortlisted", "rejected", "not_applicable"];
+const offerStatuses: ApplicationStatus[] = ["pending", "selected", "offer_given", "rejected"];
+
+type StageField = "resume_shortlist_status" | "test_status" | "gd_status" | "offer_status";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
@@ -33,9 +38,45 @@ function formatDate(value: string) {
 function isPendingDecision(application: RecruiterApplication) {
   return (
     application.resume_shortlist_status === "pending" ||
+    application.test_attended === null ||
     application.test_status === "pending" ||
     application.offer_status === "pending" ||
     (application.gd_applicable && application.gd_status === "pending")
+  );
+}
+
+function statusesFor(fieldName: StageField, gdApplicable?: boolean) {
+  if (fieldName === "offer_status") return offerStatuses;
+  if (fieldName === "gd_status") return gdApplicable ? gdStatuses : ["not_applicable" as ApplicationStatus];
+  return baseStatuses;
+}
+
+function StageSelect({ application, fieldName, label }: { application: RecruiterApplication; fieldName: StageField; label: string }) {
+  const options = statusesFor(fieldName, application.gd_applicable);
+  const disabled = fieldName === "gd_status" && !application.gd_applicable;
+
+  return (
+    <label className="flex flex-col gap-2 text-xs font-semibold uppercase text-portal-muted">
+      {label}
+      <select className="h-9 rounded-portal border border-portal-line px-2 text-sm font-normal normal-case text-portal-ink" defaultValue={application[fieldName]} disabled={disabled} name={`${fieldName}:${application.id}`}>
+        {options.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
+      </select>
+      <StatusBadge status={application[fieldName]} />
+    </label>
+  );
+}
+
+function TestAttendedSelect({ application }: { application: RecruiterApplication }) {
+  return (
+    <label className="flex flex-col gap-2 text-xs font-semibold uppercase text-portal-muted">
+      Test Attended
+      <select className="h-9 rounded-portal border border-portal-line px-2 text-sm font-normal normal-case text-portal-ink" defaultValue={application.test_attended === null ? "unset" : String(application.test_attended)} name={`test_attended:${application.id}`}>
+        <option value="unset">-</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+      <span className="text-sm font-semibold normal-case text-portal-ink">{application.test_attended === null ? "-" : application.test_attended ? "Yes" : "No"}</span>
+    </label>
   );
 }
 
@@ -66,6 +107,7 @@ function RoleCards({ applications, roles }: { applications: RecruiterApplication
 function ApplicationCard({ application }: { application: RecruiterApplication }) {
   return (
     <article className="rounded-portal border border-portal-line bg-white p-5 shadow-sm" key={application.id}>
+      <input name="applicationId" type="hidden" value={application.id} />
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{application.student_name ?? application.student_email}</h2>
@@ -82,11 +124,12 @@ function ApplicationCard({ application }: { application: RecruiterApplication })
         ) : <span className="text-sm text-portal-muted">Resume unavailable</span>}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-4">
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Resume</p><div className="mt-2"><StatusBadge status={application.resume_shortlist_status} /></div><RecruiterStageForm applicationId={application.id} fieldName="resume_shortlist_status" value={application.resume_shortlist_status} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Test</p><div className="mt-2"><StatusBadge status={application.test_status} /></div><RecruiterStageForm applicationId={application.id} fieldName="test_status" value={application.test_status} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">GD</p><div className="mt-2"><StatusBadge status={application.gd_status} /></div><RecruiterStageForm applicationId={application.id} fieldName="gd_status" value={application.gd_status} gdApplicable={application.gd_applicable} /></div>
-        <div><p className="text-xs font-semibold uppercase text-portal-muted">Offer</p><div className="mt-2"><StatusBadge status={application.offer_status} /></div><RecruiterStageForm applicationId={application.id} fieldName="offer_status" value={application.offer_status} /></div>
+      <div className="mt-5 grid gap-4 md:grid-cols-5">
+        <StageSelect application={application} fieldName="resume_shortlist_status" label="Resume Shortlist" />
+        <TestAttendedSelect application={application} />
+        <StageSelect application={application} fieldName="test_status" label="Test Shortlist" />
+        <StageSelect application={application} fieldName="gd_status" label="GD Shortlist" />
+        <StageSelect application={application} fieldName="offer_status" label="Offer" />
       </div>
     </article>
   );
@@ -158,9 +201,17 @@ export default async function RecruiterApplicationsPage({ searchParams }: { sear
       {applications.length === 0 ? (
         <EmptyState title="No applications found" description="Applicants for this role will appear here after students register." />
       ) : (
-        <div className="space-y-4">
+        <form action={updateRecruiterApplicationsForRole} className="space-y-4">
+          <input name="roleId" type="hidden" value={selectedRole.id} />
+          <div className="flex flex-col gap-3 rounded-portal border border-portal-line bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-portal-muted">Review all changes for this role, then upload them to the student portal.</p>
+            <button className="inline-flex h-10 items-center justify-center gap-2 rounded-portal bg-portal-blue px-4 text-sm font-semibold text-white transition hover:bg-blue-700" type="submit">
+              <UploadCloud className="h-4 w-4" aria-hidden="true" />
+              Save and upload statuses
+            </button>
+          </div>
           {applications.map((application) => <ApplicationCard application={application} key={application.id} />)}
-        </div>
+        </form>
       )}
     </PortalShell>
   );

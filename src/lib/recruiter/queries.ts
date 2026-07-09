@@ -95,7 +95,7 @@ export async function getApplicationsForRecruiter(recruiterId: string): Promise<
 
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name,storage_path)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name,storage_path)")
     .in("role_id", roleIds)
     .order("applied_at", { ascending: false });
 
@@ -125,6 +125,7 @@ export async function getApplicationsForRecruiter(recruiterId: string): Promise<
         applied_at: application.applied_at as string,
         gd_applicable: Boolean(role?.gd_applicable),
         resume_shortlist_status: application.resume_shortlist_status as RecruiterApplication["resume_shortlist_status"],
+        test_attended: (application.test_attended as boolean | null) ?? null,
         test_status: application.test_status as RecruiterApplication["test_status"],
         gd_status: application.gd_status as RecruiterApplication["gd_status"],
         offer_status: application.offer_status as RecruiterApplication["offer_status"]
