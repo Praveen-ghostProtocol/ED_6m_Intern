@@ -13,11 +13,11 @@ test.describe("student portal regressions", () => {
   test("Applied Companies exposes the current status columns", async ({ page }) => {
     await loginAs(page, "student", "/student/applications");
     await expect(page.getByRole("heading", { name: "Applied Companies" })).toBeVisible();
-    await expect(page.getByText("Resume Shortlist")).toBeVisible();
-    await expect(page.getByText("Test Attended")).toBeVisible();
-    await expect(page.getByText("Test Shortlist")).toBeVisible();
-    await expect(page.getByText("GD Shortlist")).toBeVisible();
-    await expect(page.getByText("Offer")).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Resume Shortlist" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Test Attended" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Test Shortlist" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "GD Shortlist" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Offer" })).toBeVisible();
   });
 
   test("JD and registration controls are separated when open roles exist", async ({ page }) => {

@@ -10,7 +10,7 @@ Recommended automated test variables:
 
 ```text
 TEST_BASE_URL=http://127.0.0.1:3000
-TEST_STUDENT_EMAIL=ed23b001@smail.iitm.ac.in
+TEST_STUDENT_EMAIL=student.test@ed-internships.local
 TEST_STUDENT_PASSWORD=<test-password>
 TEST_COMPANY_EMAIL=recruiter.test@ed-internships.local
 TEST_COMPANY_PASSWORD=<test-password>
@@ -19,6 +19,14 @@ TEST_ORGANIZER_PASSWORD=<test-password>
 ```
 
 `TEST_COMPANY_EMAIL` can also be provided as `TEST_RECRUITER_EMAIL`; `TEST_COMPANY_PASSWORD` can also be provided as `TEST_RECRUITER_PASSWORD`.
+
+Create or reset the dedicated automated test accounts with:
+
+```powershell
+npm.cmd --silent run provision:e2e-test-users > test-user-credentials.csv
+```
+
+This creates `student.test@ed-internships.local`, `recruiter.test@ed-internships.local`, and `organizer.test@ed-internships.local`, marks them ready for testing, and seeds one demo company role/application. The generated credential CSV is local-only and ignored by Git.
 
 ## Release Gate
 
