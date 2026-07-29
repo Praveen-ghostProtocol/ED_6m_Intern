@@ -14,3 +14,7 @@ dev-server*.log
 student-credentials.csv
 test-user-credentials.csv
 *.credentials.csv
+
+playwright-report/
+test-results/
+.auth/
