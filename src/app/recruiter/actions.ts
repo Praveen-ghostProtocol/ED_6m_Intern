@@ -52,6 +52,42 @@ async function requireRecruiterContext() {
   return { profile, recruiter };
 }
 
+export async function updateRecruiterCompanyDetails(
+  _previousState: RecruiterActionState,
+  formData: FormData
+): Promise<RecruiterActionState> {
+  const { recruiter } = await requireRecruiterContext();
+
+  if (!recruiter) {
+    return { error: "Ask the internship organizer to link this login to a company first." };
+  }
+
+  const name = textValue(formData, "name");
+  const description = nullableText(formData, "description");
+
+  if (name.length < 2) {
+    return { error: "Company name is required." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("companies")
+    .update({ name, description })
+    .eq("id", recruiter.company_id);
+
+  if (error) {
+    return { error: error.code === "23505" ? "This company name is already used." : error.message };
+  }
+
+  revalidatePath("/recruiter");
+  revalidatePath("/recruiter/roles");
+  revalidatePath("/recruiter/profile");
+  revalidatePath("/student/companies");
+  revalidatePath("/organizer/roles");
+  revalidatePath("/organizer/recruiters");
+
+  return { success: "Company details updated." };
+}
 export async function createCompanyRole(
   _previousState: RecruiterActionState,
   formData: FormData

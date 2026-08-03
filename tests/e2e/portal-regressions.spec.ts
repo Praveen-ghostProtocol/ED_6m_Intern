@@ -48,6 +48,8 @@ test.describe("company portal regressions", () => {
   test("company can view role creation and role-wise applications", async ({ page }) => {
     await loginAs(page, "company", "/recruiter/roles");
     await expect(page.getByRole("heading", { name: "Company Roles" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Company Details" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit" }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create Company Role" })).toBeVisible();
     await expect(page.getByLabel("JD PDF")).toBeVisible();
 

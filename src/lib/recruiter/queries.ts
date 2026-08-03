@@ -23,7 +23,7 @@ export async function getRecruiterByProfileId(profileId: string): Promise<Recrui
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("recruiters")
-    .select("id,profile_id,designation,company_id,profiles(email,full_name,is_active),companies(name)")
+    .select("id,profile_id,designation,company_id,profiles(email,full_name,is_active),companies(name,description)")
     .eq("profile_id", profileId)
     .single();
 
@@ -41,6 +41,7 @@ export async function getRecruiterByProfileId(profileId: string): Promise<Recrui
     full_name: (profile?.full_name as string | null | undefined) ?? null,
     company_id: data.company_id as string,
     company_name: (company?.name as string | undefined) ?? "Company",
+    company_description: (company?.description as string | null | undefined) ?? null,
     designation: (data.designation as string | null) ?? null,
     is_active: Boolean(profile?.is_active)
   };
@@ -50,7 +51,7 @@ export async function getAssignedRolesForRecruiter(recruiterId: string): Promise
   const supabase = await createClient();
   const { data } = await supabase
     .from("recruiter_role_assignments")
-    .select("role_id,internship_roles(id,company_id,title,duration,stipend,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,deadline,gd_applicable,status,companies(name))")
+    .select("role_id,internship_roles(id,company_id,title,duration,stipend,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,deadline,gd_applicable,status,companies(name,description))")
     .eq("recruiter_id", recruiterId)
     .order("created_at", { ascending: false });
 
@@ -95,7 +96,7 @@ export async function getApplicationsForRecruiter(recruiterId: string): Promise<
 
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name,storage_path)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name,description)),resumes(file_name,storage_path)")
     .in("role_id", roleIds)
     .order("applied_at", { ascending: false });
 

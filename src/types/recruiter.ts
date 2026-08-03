@@ -8,6 +8,7 @@ export type RecruiterProfile = {
   full_name: string | null;
   company_id: string;
   company_name: string;
+  company_description: string | null;
   designation: string | null;
   is_active: boolean;
 };

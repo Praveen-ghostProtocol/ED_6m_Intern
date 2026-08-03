@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { CompanyDetailsEditor } from "@/components/recruiter/CompanyDetailsEditor";
 import { CompanyRoleForm } from "@/components/recruiter/CompanyRoleForm";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
@@ -29,6 +30,7 @@ export default async function RecruiterRolesPage() {
         <EmptyState title="Company profile not found" description="Ask the internship organizer to link this login to a company." />
       ) : (
         <div className="space-y-5">
+          <CompanyDetailsEditor recruiter={recruiter} />
           <CompanyRoleForm />
           {roles.length === 0 ? (
             <EmptyState title="No roles created yet" description="Create your first company role above. Draft roles stay hidden from students until opened." />
