@@ -70,7 +70,7 @@ test.describe("organizer portal regressions", () => {
     await page.goto("/organizer/resumes");
     await expect(page.getByRole("heading", { name: "Resume Verification" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "PDF Resumes", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Master Resume Entries" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Master Resume Entries", exact: true })).toBeVisible();
 
     await page.goto("/organizer/roles");
     await expect(page.getByRole("heading", { name: "Companies & Roles" })).toBeVisible();

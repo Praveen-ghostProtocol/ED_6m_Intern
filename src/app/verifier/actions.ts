@@ -17,18 +17,27 @@ function nullableText(formData: FormData, name: string) {
   return value.length > 0 ? value : null;
 }
 
-function revalidateVerifierReviewPaths() {
+function optionalUuid(formData: FormData, name: string) {
+  const value = formData.get(name);
+  return typeof value === "string" && uuidSchema.safeParse(value).success ? value : null;
+}
+
+function revalidateVerifierReviewPaths(studentId?: string | null) {
   revalidatePath("/verifier");
+  revalidatePath("/verifier/students");
   revalidatePath("/verifier/master-resume");
   revalidatePath("/verifier/resumes");
   revalidatePath("/student/master-resume");
   revalidatePath("/student/resumes");
   revalidatePath("/organizer/resumes");
+  revalidatePath("/organizer/verifiers");
+  if (studentId) revalidatePath(`/verifier/students/${studentId}`);
 }
 
 export async function verifyMasterResumeEntry(formData: FormData) {
   const profile = await requireRole("verifier");
   const entryId = uuidSchema.parse(formData.get("entryId"));
+  const studentId = optionalUuid(formData, "studentId");
   const supabase = await createClient();
 
   await supabase
@@ -42,12 +51,13 @@ export async function verifyMasterResumeEntry(formData: FormData) {
     .eq("id", entryId)
     .eq("status", "pending");
 
-  revalidateVerifierReviewPaths();
+  revalidateVerifierReviewPaths(studentId);
 }
 
 export async function rejectMasterResumeEntry(formData: FormData) {
   const profile = await requireRole("verifier");
   const entryId = uuidSchema.parse(formData.get("entryId"));
+  const studentId = optionalUuid(formData, "studentId");
   const note = nullableText(formData, "verificationNote");
   const supabase = await createClient();
 
@@ -62,12 +72,13 @@ export async function rejectMasterResumeEntry(formData: FormData) {
     .eq("id", entryId)
     .eq("status", "pending");
 
-  revalidateVerifierReviewPaths();
+  revalidateVerifierReviewPaths(studentId);
 }
 
 export async function verifyAssignedResume(formData: FormData) {
   const profile = await requireRole("verifier");
   const resumeId = uuidSchema.parse(formData.get("resumeId"));
+  const studentId = optionalUuid(formData, "studentId");
   const supabase = await createClient();
 
   await supabase
@@ -81,12 +92,13 @@ export async function verifyAssignedResume(formData: FormData) {
     .eq("id", resumeId)
     .eq("status", "pending");
 
-  revalidateVerifierReviewPaths();
+  revalidateVerifierReviewPaths(studentId);
 }
 
 export async function rejectAssignedResume(formData: FormData) {
   const profile = await requireRole("verifier");
   const resumeId = uuidSchema.parse(formData.get("resumeId"));
+  const studentId = optionalUuid(formData, "studentId");
   const note = nullableText(formData, "verificationNote");
   const supabase = await createClient();
 
@@ -101,5 +113,5 @@ export async function rejectAssignedResume(formData: FormData) {
     .eq("id", resumeId)
     .eq("status", "pending");
 
-  revalidateVerifierReviewPaths();
+  revalidateVerifierReviewPaths(studentId);
 }

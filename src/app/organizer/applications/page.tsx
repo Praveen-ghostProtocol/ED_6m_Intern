@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { UploadCloud } from "lucide-react";
 import { updateApplicationsForRole } from "@/app/organizer/actions";
+import { ApplicationCsvExport } from "@/components/organizer/ApplicationCsvExport";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { StatusBadge } from "@/components/student/StatusBadge";
@@ -147,7 +148,10 @@ export default async function OrganizerApplicationsPage({ searchParams }: { sear
         </form>
       </div>
       {applications.length === 0 ? <EmptyState title="No applications found" description="Student applications for this role will appear after students register." /> : (
-        <form action={updateApplicationsForRole} className="space-y-4">
+        <div className="space-y-4">
+          <ApplicationCsvExport applications={applications} role={selectedRole} />
+          <form action={updateApplicationsForRole} className="space-y-4">
+
           <input name="roleId" type="hidden" value={selectedRole.id} />
           <div className="flex flex-col gap-3 rounded-portal border border-portal-line bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <p className="text-sm text-portal-muted">Review all changes for this role, then upload them to the student portal.</p>
@@ -157,7 +161,8 @@ export default async function OrganizerApplicationsPage({ searchParams }: { sear
             </button>
           </div>
           {applications.map((application) => <ApplicationCard application={application} key={application.id} />)}
-        </form>
+                  </form>
+        </div>
       )}
     </PortalShell>
   );

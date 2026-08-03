@@ -67,6 +67,8 @@ export type OrganizerApplication = {
   student_roll_number: string;
   student_email: string;
   student_name: string | null;
+  student_cgpa: number | null;
+  student_branch_specialisation: string | null;
   role_id: string;
   company_name: string;
   role_title: string;
@@ -131,4 +133,19 @@ export type OrganizerMasterResumeEntry = {
   student_roll_number: string;
   student_email: string;
   student_name: string | null;
+};
+export type OrganizerVerificationItem = {
+  id: string;
+  kind: "master" | "resume";
+  student_id: string;
+  student_roll_number: string;
+  student_email: string;
+  student_name: string | null;
+  title: string;
+  status: ResumeStatus;
+  verification_note: string | null;
+  submitted_at: string;
+  assigned_verifier_profile_id: string | null;
+  assigned_verifier_email: string | null;
+  assigned_verifier_name: string | null;
 };

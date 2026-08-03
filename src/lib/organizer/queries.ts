@@ -10,7 +10,8 @@ import type {
   OrganizerRole,
   OrganizerStudent,
   OrganizerVerifier,
-  OrganizerVerifierAssignment
+  OrganizerVerifierAssignment,
+  OrganizerVerificationItem
 } from "@/types/organizer";
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -165,7 +166,7 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
     .order("applied_at", { ascending: false });
 
   return (data ?? []).map((application) => {
@@ -180,6 +181,8 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
       student_roll_number: (student?.roll_number as string | undefined) ?? "",
       student_email: (profile?.email as string | undefined) ?? "",
       student_name: (profile?.full_name as string | null | undefined) ?? null,
+      student_cgpa: (student?.cgpa as number | null | undefined) ?? null,
+      student_branch_specialisation: (student?.branch_specialisation as string | null | undefined) ?? null,
       role_id: application.role_id as string,
       company_name: (company?.name as string | undefined) ?? "Company",
       role_title: (role?.title as string | undefined) ?? "Role",
@@ -337,5 +340,89 @@ export async function getPendingMasterResumeEntriesForOrganizer(): Promise<Organ
       student_email: (profile?.email as string | undefined) ?? "",
       student_name: (profile?.full_name as string | null | undefined) ?? null
     };
+  });
+}
+export async function getVerificationItemsForOrganizer(): Promise<OrganizerVerificationItem[]> {
+  const supabase = await createClient();
+  const [{ data: resumes }, { data: masterEntries }, { data: assignments }, { data: verifierProfiles }] = await Promise.all([
+    supabase
+      .from("resumes")
+      .select("id,student_id,file_name,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))"),
+    supabase
+      .from("master_resume_entries")
+      .select("id,student_id,title,status,verification_note,created_at,students(roll_number,profiles(email,full_name))"),
+    supabase.from("student_verifier_assignments").select("student_id,verifier_profile_id"),
+    supabase.from("profiles").select("id,email,full_name").eq("role", "verifier")
+  ]);
+
+  const assignmentByStudent = new Map((assignments ?? []).map((assignment) => [assignment.student_id as string, assignment.verifier_profile_id as string]));
+  const verifierById = new Map((verifierProfiles ?? []).map((profile) => [profile.id as string, profile]));
+
+  const fromStudent = (studentValue: unknown) => {
+    const student = one(studentValue as Record<string, unknown> | Record<string, unknown>[] | null | undefined) as Record<string, unknown> | null;
+    const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+
+    return {
+      rollNumber: (student?.roll_number as string | undefined) ?? "",
+      email: (profile?.email as string | undefined) ?? "",
+      name: (profile?.full_name as string | null | undefined) ?? null
+    };
+  };
+
+  const attachAssignment = (studentId: string) => {
+    const verifierId = assignmentByStudent.get(studentId) ?? null;
+    const verifier = verifierId ? verifierById.get(verifierId) as Record<string, unknown> | undefined : undefined;
+
+    return {
+      assigned_verifier_profile_id: verifierId,
+      assigned_verifier_email: (verifier?.email as string | null | undefined) ?? null,
+      assigned_verifier_name: (verifier?.full_name as string | null | undefined) ?? null
+    };
+  };
+
+  const resumeItems: OrganizerVerificationItem[] = (resumes ?? []).map((resume) => {
+    const studentId = resume.student_id as string;
+    const student = fromStudent(resume.students);
+
+    return {
+      id: resume.id as string,
+      kind: "resume",
+      student_id: studentId,
+      student_roll_number: student.rollNumber,
+      student_email: student.email,
+      student_name: student.name,
+      title: resume.file_name as string,
+      status: resume.status as OrganizerVerificationItem["status"],
+      verification_note: (resume.verification_note as string | null) ?? null,
+      submitted_at: resume.uploaded_at as string,
+      ...attachAssignment(studentId)
+    };
+  });
+
+  const masterItems: OrganizerVerificationItem[] = (masterEntries ?? []).map((entry) => {
+    const studentId = entry.student_id as string;
+    const student = fromStudent(entry.students);
+
+    return {
+      id: entry.id as string,
+      kind: "master",
+      student_id: studentId,
+      student_roll_number: student.rollNumber,
+      student_email: student.email,
+      student_name: student.name,
+      title: entry.title as string,
+      status: entry.status as OrganizerVerificationItem["status"],
+      verification_note: (entry.verification_note as string | null) ?? null,
+      submitted_at: entry.created_at as string,
+      ...attachAssignment(studentId)
+    };
+  });
+
+  const statusOrder = { pending: 0, verified: 1, rejected: 2 } as const;
+
+  return [...resumeItems, ...masterItems].sort((a, b) => {
+    const byStatus = statusOrder[a.status] - statusOrder[b.status];
+    if (byStatus !== 0) return byStatus;
+    return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
   });
 }

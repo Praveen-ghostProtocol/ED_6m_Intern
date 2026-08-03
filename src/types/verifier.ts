@@ -45,3 +45,7 @@ export type VerifierResume = {
   student_email: string;
   student_name: string | null;
 };
+export type VerifierStudentDetail = VerifierStudent & {
+  master_entries: VerifierMasterResumeEntry[];
+  resumes: VerifierResume[];
+};

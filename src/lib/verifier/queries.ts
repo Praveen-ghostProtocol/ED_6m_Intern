@@ -3,7 +3,8 @@ import type {
   VerifierDashboardStats,
   VerifierMasterResumeEntry,
   VerifierResume,
-  VerifierStudent
+  VerifierStudent,
+  VerifierStudentDetail
 } from "@/types/verifier";
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -150,4 +151,21 @@ export async function getResumesForVerifier(profileId: string): Promise<Verifier
       };
     })
   );
+}
+export async function getAssignedStudentDetailForVerifier(profileId: string, studentId: string): Promise<VerifierStudentDetail | null> {
+  const students = await getAssignedStudentsForVerifier(profileId);
+  const student = students.find((candidate) => candidate.id === studentId) ?? null;
+
+  if (!student) return null;
+
+  const [masterEntries, resumes] = await Promise.all([
+    getMasterResumeEntriesForVerifier(profileId),
+    getResumesForVerifier(profileId)
+  ]);
+
+  return {
+    ...student,
+    master_entries: masterEntries.filter((entry) => entry.student_id === studentId),
+    resumes: resumes.filter((resume) => resume.student_id === studentId)
+  };
 }
