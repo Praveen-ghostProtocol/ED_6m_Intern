@@ -100,3 +100,35 @@ export type OrganizerReportRow = {
   gd_shortlists: number;
   offers: number;
 };
+export type OrganizerVerifier = {
+  profile_id: string;
+  email: string;
+  full_name: string | null;
+  assigned_student_count: number;
+};
+
+export type OrganizerVerifierAssignment = {
+  id: string;
+  student_id: string;
+  student_roll_number: string;
+  student_email: string;
+  student_name: string | null;
+  verifier_profile_id: string;
+  verifier_email: string;
+  verifier_name: string | null;
+  assigned_at: string;
+};
+
+export type OrganizerMasterResumeEntry = {
+  id: string;
+  student_id: string;
+  title: string;
+  description: string;
+  link: string | null;
+  status: ResumeStatus;
+  verification_note: string | null;
+  created_at: string;
+  student_roll_number: string;
+  student_email: string;
+  student_name: string | null;
+};

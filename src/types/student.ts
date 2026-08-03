@@ -45,6 +45,19 @@ export type StudentResume = {
   signed_url: string | null;
 };
 
+
+export type MasterResumeEntry = {
+  id: string;
+  student_id: string;
+  title: string;
+  description: string;
+  link: string | null;
+  status: ResumeStatus;
+  verification_note: string | null;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
 export type VerifiedResumeChoice = {
   id: string;
   file_name: string;

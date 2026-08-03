@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   CompanyRole,
+  MasterResumeEntry,
   StudentApplication,
   StudentRecord,
   StudentResume,
@@ -161,4 +162,18 @@ export async function getStudentApplications(studentId: string): Promise<Student
       resume_file_name: (resume?.file_name as string | undefined) ?? "Resume"
     } as StudentApplication;
   });
+}
+export async function getStudentMasterResumeEntries(studentId: string): Promise<MasterResumeEntry[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("master_resume_entries")
+    .select("id,student_id,title,description,link,status,verification_note,verified_at,created_at,updated_at")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as MasterResumeEntry[];
 }

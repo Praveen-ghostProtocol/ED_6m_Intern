@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { loginAs, skipWithoutCredentials } from "../helpers/auth";
 
-const protectedPaths = ["/student", "/recruiter", "/organizer"];
+const protectedPaths = ["/student", "/recruiter", "/organizer", "/verifier"];
 
 test.describe("logged-out access", () => {
   for (const path of protectedPaths) {
@@ -15,7 +15,7 @@ test.describe("logged-out access", () => {
 test.describe("student role access", () => {
   skipWithoutCredentials("student");
 
-  test("student cannot open company or organizer areas", async ({ page }) => {
+  test("student cannot open company, organizer, or verifier areas", async ({ page }) => {
     await loginAs(page, "student", "/student");
 
     await page.goto("/recruiter");
@@ -23,13 +23,16 @@ test.describe("student role access", () => {
 
     await page.goto("/organizer");
     await expect(page).not.toHaveURL(/\/organizer(?:\/|$)/);
+
+    await page.goto("/verifier");
+    await expect(page).not.toHaveURL(/\/verifier(?:\/|$)/);
   });
 });
 
 test.describe("company role access", () => {
   skipWithoutCredentials("company");
 
-  test("company cannot open student or organizer areas", async ({ page }) => {
+  test("company cannot open student, organizer, or verifier areas", async ({ page }) => {
     await loginAs(page, "company", "/recruiter");
 
     await page.goto("/student");
@@ -37,13 +40,16 @@ test.describe("company role access", () => {
 
     await page.goto("/organizer");
     await expect(page).not.toHaveURL(/\/organizer(?:\/|$)/);
+
+    await page.goto("/verifier");
+    await expect(page).not.toHaveURL(/\/verifier(?:\/|$)/);
   });
 });
 
 test.describe("organizer role access", () => {
   skipWithoutCredentials("organizer");
 
-  test("organizer cannot open student or company areas", async ({ page }) => {
+  test("organizer cannot open student, company, or verifier areas", async ({ page }) => {
     await loginAs(page, "organizer", "/organizer");
 
     await page.goto("/student");
@@ -51,5 +57,25 @@ test.describe("organizer role access", () => {
 
     await page.goto("/recruiter");
     await expect(page).not.toHaveURL(/\/recruiter(?:\/|$)/);
+
+    await page.goto("/verifier");
+    await expect(page).not.toHaveURL(/\/verifier(?:\/|$)/);
+  });
+});
+
+test.describe("verifier role access", () => {
+  skipWithoutCredentials("verifier");
+
+  test("verifier cannot open student, company, or organizer areas", async ({ page }) => {
+    await loginAs(page, "verifier", "/verifier");
+
+    await page.goto("/student");
+    await expect(page).not.toHaveURL(/\/student(?:\/|$)/);
+
+    await page.goto("/recruiter");
+    await expect(page).not.toHaveURL(/\/recruiter(?:\/|$)/);
+
+    await page.goto("/organizer");
+    await expect(page).not.toHaveURL(/\/organizer(?:\/|$)/);
   });
 });

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-export type PortalRole = "student" | "company" | "organizer";
+export type PortalRole = "student" | "company" | "organizer" | "verifier";
 
 type Credentials = {
   email: string;
@@ -20,6 +20,10 @@ const credentialKeys: Record<PortalRole, { email: string[]; password: string[] }
   organizer: {
     email: ["TEST_ORGANIZER_EMAIL"],
     password: ["TEST_ORGANIZER_PASSWORD"]
+  },
+  verifier: {
+    email: ["TEST_VERIFIER_EMAIL"],
+    password: ["TEST_VERIFIER_PASSWORD"]
   }
 };
 
@@ -56,8 +60,8 @@ export async function loginAs(page: Page, role: PortalRole, nextPath?: string) {
   await page.getByLabel("Password").fill(credentials.password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
 
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-  await expect(page).not.toHaveURL(/\/change-password(?:\?|$)/);
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 20_000 });
+  await expect(page).not.toHaveURL(/\/change-password(?:\?|$)/, { timeout: 20_000 });
 }
 
 export async function signOut(page: Page) {

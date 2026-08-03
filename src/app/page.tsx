@@ -1,20 +1,29 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, UserRound, Building2, LayoutDashboard } from "lucide-react";
+import { ArrowRight, ShieldCheck, UserRound, Building2, LayoutDashboard, ClipboardCheck } from "lucide-react";
 
 const portals = [
   {
     title: "Student Portal",
-    description: "Upload verified resumes, browse roles, and track application status.",
+    description: "Upload verified resumes, build your master resume, browse roles, and track application status.",
+    href: "/login?next=/student",
     icon: UserRound
   },
   {
     title: "Company Portal",
     description: "Create roles, review applicants role-wise, and update shortlist stages.",
+    href: "/login?next=/recruiter",
     icon: Building2
   },
   {
+    title: "Verifier Portal",
+    description: "Review assigned students' master resume entries and uploaded PDF resumes.",
+    href: "/login?next=/verifier",
+    icon: ClipboardCheck
+  },
+  {
     title: "Organizer Portal",
-    description: "Manage students, resume verification, roles, company accounts, and reports.",
+    description: "Manage students, verification, roles, company accounts, verifier assignments, and reports.",
+    href: "/login?next=/organizer",
     icon: LayoutDashboard
   }
 ];
@@ -32,7 +41,7 @@ export default function Home() {
               Internship Portal
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-portal-muted">
-              A light, role-based workspace for students, companies, and the internship team.
+              A light, role-based workspace for students, companies, verifiers, and the internship team.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -50,23 +59,27 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {portals.map((portal) => {
             const Icon = portal.icon;
 
             return (
-              <article
-                className="rounded-portal border border-portal-line bg-white p-5 shadow-sm"
+              <Link
+                className="group rounded-portal border border-portal-line bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-portal-blue focus:ring-offset-2"
+                href={portal.href}
                 key={portal.title}
               >
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-portal bg-portal-sky text-portal-blue">
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-portal bg-portal-sky text-portal-blue transition group-hover:bg-blue-100">
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
-                <h2 className="text-lg font-semibold">{portal.title}</h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold">{portal.title}</h2>
+                  <ArrowRight className="h-4 w-4 text-portal-muted transition group-hover:translate-x-1 group-hover:text-portal-blue" aria-hidden="true" />
+                </div>
                 <p className="mt-2 text-sm leading-6 text-portal-muted">
                   {portal.description}
                 </p>
-              </article>
+              </Link>
             );
           })}
         </section>

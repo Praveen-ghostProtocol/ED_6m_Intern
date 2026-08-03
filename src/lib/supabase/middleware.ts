@@ -5,7 +5,7 @@ import { getSupabaseAnonKey, getSupabaseUrl, hasSupabasePublicEnv } from "./env"
 
 type SupabaseCookie = { name: string; value: string; options: CookieOptions };
 
-const protectedPrefixes = ["/student", "/recruiter", "/organizer"];
+const protectedPrefixes = ["/student", "/recruiter", "/organizer", "/verifier"];
 const authPages = ["/login", "/change-password"];
 
 function isProtectedPath(pathname: string) {

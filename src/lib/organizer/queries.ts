@@ -3,11 +3,14 @@ import type {
   OrganizerApplication,
   OrganizerCompany,
   OrganizerDashboardStats,
+  OrganizerMasterResumeEntry,
   OrganizerRecruiter,
   OrganizerReportRow,
   OrganizerResume,
   OrganizerRole,
-  OrganizerStudent
+  OrganizerStudent,
+  OrganizerVerifier,
+  OrganizerVerifierAssignment
 } from "@/types/organizer";
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -253,4 +256,86 @@ export async function getReportsForOrganizer(): Promise<OrganizerReportRow[]> {
   });
 
   return Array.from(rows.values()).sort((a, b) => b.application_count - a.application_count);
+}
+export async function getVerifiersForOrganizer(): Promise<OrganizerVerifier[]> {
+  const supabase = await createClient();
+  const [{ data: profiles }, { data: assignments }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id,email,full_name")
+      .eq("role", "verifier")
+      .eq("is_active", true)
+      .order("email", { ascending: true }),
+    supabase.from("student_verifier_assignments").select("verifier_profile_id")
+  ]);
+
+  const counts = new Map<string, number>();
+  (assignments ?? []).forEach((assignment) => increment(counts, assignment.verifier_profile_id as string));
+
+  return (profiles ?? []).map((profile) => ({
+    profile_id: profile.id as string,
+    email: profile.email as string,
+    full_name: (profile.full_name as string | null) ?? null,
+    assigned_student_count: counts.get(profile.id as string) ?? 0
+  }));
+}
+
+export async function getVerifierAssignmentsForOrganizer(): Promise<OrganizerVerifierAssignment[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("student_verifier_assignments")
+    .select("id,student_id,verifier_profile_id,assigned_at,students(roll_number,profiles(email,full_name))")
+    .order("assigned_at", { ascending: false });
+
+  const verifierIds = Array.from(new Set((data ?? []).map((assignment) => assignment.verifier_profile_id as string)));
+  const { data: verifierProfiles } = verifierIds.length > 0
+    ? await supabase.from("profiles").select("id,email,full_name").in("id", verifierIds)
+    : { data: [] };
+  const verifierById = new Map((verifierProfiles ?? []).map((profile) => [profile.id as string, profile]));
+
+  return (data ?? []).map((assignment) => {
+    const student = one(assignment.students) as Record<string, unknown> | null;
+    const studentProfile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+    const verifierProfile = verifierById.get(assignment.verifier_profile_id as string) as Record<string, unknown> | undefined;
+
+    return {
+      id: assignment.id as string,
+      student_id: assignment.student_id as string,
+      student_roll_number: (student?.roll_number as string | undefined) ?? "",
+      student_email: (studentProfile?.email as string | undefined) ?? "",
+      student_name: (studentProfile?.full_name as string | null | undefined) ?? null,
+      verifier_profile_id: assignment.verifier_profile_id as string,
+      verifier_email: (verifierProfile?.email as string | undefined) ?? "",
+      verifier_name: (verifierProfile?.full_name as string | null | undefined) ?? null,
+      assigned_at: assignment.assigned_at as string
+    };
+  });
+}
+
+export async function getPendingMasterResumeEntriesForOrganizer(): Promise<OrganizerMasterResumeEntry[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("master_resume_entries")
+    .select("id,student_id,title,description,link,status,verification_note,created_at,students(roll_number,profiles(email,full_name))")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((entry) => {
+    const student = one(entry.students) as Record<string, unknown> | null;
+    const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+
+    return {
+      id: entry.id as string,
+      student_id: entry.student_id as string,
+      title: entry.title as string,
+      description: entry.description as string,
+      link: (entry.link as string | null) ?? null,
+      status: entry.status as OrganizerMasterResumeEntry["status"],
+      verification_note: (entry.verification_note as string | null) ?? null,
+      created_at: entry.created_at as string,
+      student_roll_number: (student?.roll_number as string | undefined) ?? "",
+      student_email: (profile?.email as string | undefined) ?? "",
+      student_name: (profile?.full_name as string | null | undefined) ?? null
+    };
+  });
 }

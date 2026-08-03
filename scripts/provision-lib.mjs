@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const defaultOrganizerEmail = "organizer.test@ed-internships.local";
 export const defaultRecruiterEmail = "recruiter.test@ed-internships.local";
+export const defaultVerifierEmail = "verifier.test@ed-internships.local";
 
 export function loadEnvFiles() {
   for (const path of [".env.local", ".env"]) {

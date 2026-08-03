@@ -2,6 +2,7 @@ import {
   createOrResetAuthUser,
   defaultOrganizerEmail,
   defaultRecruiterEmail,
+  defaultVerifierEmail,
   listAllAuthUsers,
   printCredentialHeader,
   printCredentialRow,
@@ -14,6 +15,7 @@ const defaultStudentEmail = "student.test@ed-internships.local";
 const testUsers = [
   { email: defaultStudentEmail, role: "student", fullName: "Student Test", linkedRecord: "ed23test" },
   { email: defaultRecruiterEmail, role: "recruiter", fullName: "Recruiter Test", linkedRecord: "ED Demo Company" },
+  { email: defaultVerifierEmail, role: "verifier", fullName: "Verifier Test", linkedRecord: "ed23test" },
   { email: defaultOrganizerEmail, role: "organizer", fullName: "Organizer Test", linkedRecord: "Organizer Test" }
 ];
 
@@ -203,12 +205,53 @@ async function upsertTestApplication({ studentId, roleId, organizerProfileId }) 
   if (applicationError) throw applicationError;
 }
 
+async function upsertVerifierAssignment({ studentId, verifierProfileId, organizerProfileId }) {
+  const { error } = await supabase
+    .from("student_verifier_assignments")
+    .upsert(
+      { student_id: studentId, verifier_profile_id: verifierProfileId, assigned_by: organizerProfileId },
+      { onConflict: "student_id" }
+    );
+  if (error) throw error;
+}
+
+async function upsertMasterResumeEntry(studentId) {
+  const { data: existing, error: selectError } = await supabase
+    .from("master_resume_entries")
+    .select("id")
+    .eq("student_id", studentId)
+    .eq("title", "E2E Master Resume Entry")
+    .maybeSingle();
+  if (selectError) throw selectError;
+
+  const values = {
+    student_id: studentId,
+    title: "E2E Master Resume Entry",
+    description: "Designed a fixture entry for verifier and organizer review automation.",
+    link: "https://example.com/e2e-master-resume",
+    status: "pending",
+    verification_note: null,
+    verified_by: null,
+    verified_at: null
+  };
+
+  if (existing) {
+    const { error } = await supabase.from("master_resume_entries").update(values).eq("id", existing.id);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase.from("master_resume_entries").insert(values);
+  if (error) throw error;
+}
+
 const users = await listAllAuthUsers(supabase);
 const userIndex = new Map(users.map((user) => [user.email?.toLowerCase(), user]).filter(([email]) => Boolean(email)));
 const credentials = [];
 let recruiterProfileId = null;
 let studentId = null;
 let organizerProfileId = null;
+let verifierProfileId = null;
 
 for (const testUser of testUsers) {
   const password = temporaryPassword();
@@ -232,6 +275,10 @@ for (const testUser of testUsers) {
     organizerProfileId = user.id;
   }
 
+  if (testUser.role === "verifier") {
+    verifierProfileId = user.id;
+  }
+
   credentials.push({
     email: testUser.email,
     role: testUser.role,
@@ -244,6 +291,7 @@ for (const testUser of testUsers) {
 if (!recruiterProfileId) throw new Error("Recruiter profile was not created.");
 if (!studentId) throw new Error("Student profile was not created.");
 if (!organizerProfileId) throw new Error("Organizer profile was not created.");
+if (!verifierProfileId) throw new Error("Verifier profile was not created.");
 
 const companyId = await upsertCompany();
 const roleId = await upsertRole(companyId);
@@ -255,6 +303,8 @@ const { error: assignmentError } = await supabase
 if (assignmentError) throw assignmentError;
 
 await upsertTestApplication({ studentId, roleId, organizerProfileId });
+await upsertVerifierAssignment({ studentId, verifierProfileId, organizerProfileId });
+await upsertMasterResumeEntry(studentId);
 
 printCredentialHeader();
 for (const credential of credentials) {

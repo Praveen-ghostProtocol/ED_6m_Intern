@@ -20,6 +20,14 @@ test.describe("student portal regressions", () => {
     await expect(page.getByRole("columnheader", { name: "Offer" })).toBeVisible();
   });
 
+  test("Master Resume tab exposes the entry form", async ({ page }) => {
+    await loginAs(page, "student", "/student/master-resume");
+    await expect(page.getByRole("heading", { name: "Master Resume" })).toBeVisible();
+    await expect(page.getByLabel("Title")).toBeVisible();
+    await expect(page.getByLabel("Description")).toBeVisible();
+    await expect(page.getByLabel(/Link/i)).toBeVisible();
+  });
+
   test("JD and registration controls are separated when open roles exist", async ({ page }) => {
     await loginAs(page, "student", "/student/companies");
     const registerButtons = page.getByRole("button", { name: /register|update/i });
@@ -56,6 +64,8 @@ test.describe("organizer portal regressions", () => {
 
     await page.goto("/organizer/resumes");
     await expect(page.getByRole("heading", { name: "Resume Verification" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "PDF Resumes", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Master Resume Entries" })).toBeVisible();
 
     await page.goto("/organizer/roles");
     await expect(page.getByRole("heading", { name: "Companies & Roles" })).toBeVisible();
@@ -64,7 +74,28 @@ test.describe("organizer portal regressions", () => {
     await page.goto("/organizer/applications");
     await expect(page.getByRole("heading", { name: "Applications" })).toBeVisible();
 
+    await page.goto("/organizer/verifiers");
+    await expect(page.getByRole("heading", { name: "Verifiers" })).toBeVisible();
+
     await page.goto("/organizer/reports");
     await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  });
+});
+
+test.describe("verifier portal regressions", () => {
+  skipWithoutCredentials("verifier");
+
+  test("verifier can view assigned queues", async ({ page }) => {
+    await loginAs(page, "verifier", "/verifier");
+    await expect(page.getByRole("heading", { name: "Verifier Dashboard" })).toBeVisible();
+
+    await page.goto("/verifier/students");
+    await expect(page.getByRole("heading", { name: "Assigned Students" })).toBeVisible();
+
+    await page.goto("/verifier/master-resume");
+    await expect(page.getByRole("heading", { name: "Master Resume Verification" })).toBeVisible();
+
+    await page.goto("/verifier/resumes");
+    await expect(page.getByRole("heading", { name: "My Resumes Verification" })).toBeVisible();
   });
 });

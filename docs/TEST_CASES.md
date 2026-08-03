@@ -16,9 +16,13 @@ TEST_COMPANY_EMAIL=recruiter.test@ed-internships.local
 TEST_COMPANY_PASSWORD=<test-password>
 TEST_ORGANIZER_EMAIL=organizer.test@ed-internships.local
 TEST_ORGANIZER_PASSWORD=<test-password>
+TEST_VERIFIER_EMAIL=verifier.test@ed-internships.local
+TEST_VERIFIER_PASSWORD=<test-password>
 ```
 
 `TEST_COMPANY_EMAIL` can also be provided as `TEST_RECRUITER_EMAIL`; `TEST_COMPANY_PASSWORD` can also be provided as `TEST_RECRUITER_PASSWORD`.
+
+Apply `supabase/migrations/008_verifier_role.sql` and `supabase/migrations/009_master_resume_and_verifiers.sql` before provisioning verifier test accounts.
 
 Create or reset the dedicated automated test accounts with:
 
@@ -26,7 +30,7 @@ Create or reset the dedicated automated test accounts with:
 npm.cmd --silent run provision:e2e-test-users > test-user-credentials.csv
 ```
 
-This creates `student.test@ed-internships.local`, `recruiter.test@ed-internships.local`, and `organizer.test@ed-internships.local`, marks them ready for testing, and seeds one demo company role/application. The generated credential CSV is local-only and ignored by Git.
+This creates `student.test@ed-internships.local`, `recruiter.test@ed-internships.local`, `verifier.test@ed-internships.local`, and `organizer.test@ed-internships.local`, marks them ready for testing, assigns the test student to the verifier, and seeds one demo company role/application plus one master resume entry. The generated credential CSV is local-only and ignored by Git.
 
 ## Release Gate
 

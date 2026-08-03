@@ -314,3 +314,71 @@ export async function assignRecruiterToRole(formData: FormData) {
   revalidatePath("/organizer/recruiters");
   revalidatePath("/recruiter");
 }
+export async function assignVerifierToStudent(formData: FormData) {
+  const profile = await requireOrganizer();
+  const studentId = uuidSchema.parse(formData.get("studentId"));
+  const verifierProfileId = uuidSchema.parse(formData.get("verifierProfileId"));
+  const supabase = await createClient();
+
+  await supabase
+    .from("student_verifier_assignments")
+    .upsert(
+      {
+        student_id: studentId,
+        verifier_profile_id: verifierProfileId,
+        assigned_by: profile.id,
+        assigned_at: new Date().toISOString()
+      },
+      { onConflict: "student_id" }
+    );
+
+  revalidatePath("/organizer/verifiers");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/students");
+}
+
+export async function verifyMasterResumeEntryAsOrganizer(formData: FormData) {
+  const profile = await requireOrganizer();
+  const entryId = uuidSchema.parse(formData.get("entryId"));
+  const supabase = await createClient();
+
+  await supabase
+    .from("master_resume_entries")
+    .update({
+      status: "verified",
+      verification_note: nullableText(formData, "verificationNote"),
+      verified_by: profile.id,
+      verified_at: new Date().toISOString()
+    })
+    .eq("id", entryId)
+    .eq("status", "pending");
+
+  revalidatePath("/organizer");
+  revalidatePath("/organizer/resumes");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/master-resume");
+  revalidatePath("/student/master-resume");
+}
+
+export async function rejectMasterResumeEntryAsOrganizer(formData: FormData) {
+  const profile = await requireOrganizer();
+  const entryId = uuidSchema.parse(formData.get("entryId"));
+  const supabase = await createClient();
+
+  await supabase
+    .from("master_resume_entries")
+    .update({
+      status: "rejected",
+      verification_note: nullableText(formData, "verificationNote"),
+      verified_by: profile.id,
+      verified_at: new Date().toISOString()
+    })
+    .eq("id", entryId)
+    .eq("status", "pending");
+
+  revalidatePath("/organizer");
+  revalidatePath("/organizer/resumes");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/master-resume");
+  revalidatePath("/student/master-resume");
+}

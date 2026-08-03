@@ -1,15 +1,17 @@
-export const roles = ["student", "recruiter", "organizer"] as const;
+export const roles = ["student", "recruiter", "organizer", "verifier"] as const;
 
 export type AppRole = (typeof roles)[number];
 
 export const roleHomePath: Record<AppRole, string> = {
   student: "/student",
   recruiter: "/recruiter",
-  organizer: "/organizer"
+  organizer: "/organizer",
+  verifier: "/verifier"
 };
 
 export const studentNavigation = [
   { label: "My Resumes", href: "/student/resumes" },
+  { label: "Master Resume", href: "/student/master-resume" },
   { label: "Companies", href: "/student/companies" },
   { label: "Applied Companies", href: "/student/applications" },
   { label: "Profile", href: "/student/profile" }
@@ -29,5 +31,13 @@ export const organizerNavigation = [
   { label: "Companies & Roles", href: "/organizer/roles" },
   { label: "Applications", href: "/organizer/applications" },
   { label: "Company Accounts", href: "/organizer/recruiters" },
+  { label: "Verifiers", href: "/organizer/verifiers" },
   { label: "Reports", href: "/organizer/reports" }
+];
+
+export const verifierNavigation = [
+  { label: "Dashboard", href: "/verifier" },
+  { label: "Assigned Students", href: "/verifier/students" },
+  { label: "Master Resume", href: "/verifier/master-resume" },
+  { label: "My Resumes", href: "/verifier/resumes" }
 ];

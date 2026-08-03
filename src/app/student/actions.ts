@@ -407,3 +407,111 @@ export async function removeApplication(
   revalidateStudentApplicationPaths();
   return { success: "Registration removed. You can register again before the deadline." };
 }
+const masterResumeSchema = z.object({
+  title: requiredTextSchema.max(160, "Title is too long."),
+  description: requiredTextSchema.max(2000, "Description is too long."),
+  link: z.string().trim().optional().or(z.literal("")).transform((value) => value || null)
+});
+
+function validateMasterResumeLink(link: string | null) {
+  if (!link) return true;
+
+  try {
+    const url = new URL(link);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export async function createMasterResumeEntry(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  const { student } = await requireStudentContext();
+  const parsed = masterResumeSchema.safeParse({
+    title: formText(formData, "title"),
+    description: formText(formData, "description"),
+    link: formText(formData, "link")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the entry and try again." };
+  }
+
+  if (!validateMasterResumeLink(parsed.data.link)) {
+    return { error: "Use a valid http or https link." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("master_resume_entries").insert({
+    student_id: student.id,
+    title: parsed.data.title,
+    description: parsed.data.description,
+    link: parsed.data.link,
+    status: "pending"
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/student/master-resume");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/master-resume");
+  revalidatePath("/organizer/resumes");
+  return { success: "Master resume entry submitted for verification." };
+}
+
+export async function updateRejectedMasterResumeEntry(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  const { student } = await requireStudentContext();
+  const entryId = uuidSchema.safeParse(formData.get("entryId"));
+  const parsed = masterResumeSchema.safeParse({
+    title: formText(formData, "title"),
+    description: formText(formData, "description"),
+    link: formText(formData, "link")
+  });
+
+  if (!entryId.success) {
+    return { error: "Choose a valid master resume entry." };
+  }
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the entry and try again." };
+  }
+
+  if (!validateMasterResumeLink(parsed.data.link)) {
+    return { error: "Use a valid http or https link." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("master_resume_entries")
+    .update({
+      title: parsed.data.title,
+      description: parsed.data.description,
+      link: parsed.data.link,
+      status: "pending",
+      verification_note: null,
+      verified_by: null,
+      verified_at: null
+    })
+    .eq("id", entryId.data)
+    .eq("student_id", student.id)
+    .eq("status", "rejected");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/student/master-resume");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/master-resume");
+  revalidatePath("/organizer/resumes");
+  return { success: "Entry resubmitted for verification." };
+}
