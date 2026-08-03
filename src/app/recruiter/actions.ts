@@ -108,7 +108,7 @@ export async function createCompanyRole(
 
   const { error: assignmentError } = await supabase
     .from("recruiter_role_assignments")
-    .upsert({ recruiter_id: recruiter.id, role_id: role.id as string }, { onConflict: "recruiter_id,role_id" });
+    .insert({ recruiter_id: recruiter.id, role_id: role.id as string });
 
   if (assignmentError) {
     return { error: assignmentError.message };
