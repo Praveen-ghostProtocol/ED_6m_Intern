@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useActionState } from "react";
+import { Fragment, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ExternalLink, Pencil, X } from "lucide-react";
 import { updateRecruiterCompanyRole, type RecruiterActionState } from "@/app/recruiter/actions";
@@ -45,6 +45,19 @@ function ActionMessage({ state }: { state: RecruiterActionState }) {
   }
 
   return null;
+}
+
+function RoleEditButton({ isEditing, onClick }: { isEditing: boolean; onClick: () => void }) {
+  return (
+    <button
+      className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+      onClick={onClick}
+      type="button"
+    >
+      {isEditing ? <X className="h-4 w-4" aria-hidden="true" /> : <Pencil className="h-4 w-4" aria-hidden="true" />}
+      {isEditing ? "Close" : "Edit"}
+    </button>
+  );
 }
 
 function RoleEditPanel({ onCancel, role }: { onCancel: () => void; role: RecruiterRole }) {
@@ -127,11 +140,12 @@ export function CompanyRolesManager({ roles }: { roles: RecruiterRole[] }) {
   return (
     <div className="overflow-hidden rounded-portal border border-portal-line bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1120px] text-left text-sm">
+        <table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="bg-portal-sky text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Action</th>
               <th className="px-4 py-3">Location</th>
               <th className="px-4 py-3">Duration</th>
               <th className="px-4 py-3">Stipend</th>
@@ -139,49 +153,45 @@ export function CompanyRolesManager({ roles }: { roles: RecruiterRole[] }) {
               <th className="px-4 py-3">Deadline</th>
               <th className="px-4 py-3">GD</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-portal-line">
-            {roles.map((role) => (
-              <Fragment key={role.id}>
-                <tr>
-                  <td className="px-4 py-4 font-semibold">{role.company_name}</td>
-                  <td className="px-4 py-4 text-portal-muted">{role.title}</td>
-                  <td className="px-4 py-4 text-portal-muted">{role.location ?? "-"}</td>
-                  <td className="px-4 py-4 text-portal-muted">{role.duration ?? "-"}</td>
-                  <td className="px-4 py-4 text-portal-muted">{role.stipend ?? "-"}</td>
-                  <td className="px-4 py-4">
-                    {role.jd_signed_url ? (
-                      <a className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky" href={role.jd_signed_url} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                        View JD
-                      </a>
-                    ) : <span className="text-portal-muted">Text only</span>}
-                  </td>
-                  <td className="px-4 py-4 text-portal-muted">{formatDate(role.deadline)}</td>
-                  <td className="px-4 py-4 text-portal-muted">{role.gd_applicable ? "Yes" : "No"}</td>
-                  <td className="px-4 py-4"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${roleStatusStyle[role.status]}`}>{role.status}</span></td>
-                  <td className="px-4 py-4">
-                    <button
-                      className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
-                      onClick={() => setEditingRoleId((current) => current === role.id ? null : role.id)}
-                      type="button"
-                    >
-                      {editingRoleId === role.id ? <X className="h-4 w-4" aria-hidden="true" /> : <Pencil className="h-4 w-4" aria-hidden="true" />}
-                      {editingRoleId === role.id ? "Close" : "Edit"}
-                    </button>
-                  </td>
-                </tr>
-                {editingRoleId === role.id ? (
+            {roles.map((role) => {
+              const isEditing = editingRoleId === role.id;
+
+              return (
+                <Fragment key={role.id}>
                   <tr>
-                    <td className="bg-white px-4 py-4" colSpan={10}>
-                      <RoleEditPanel role={role} onCancel={() => setEditingRoleId(null)} />
+                    <td className="px-4 py-4 font-semibold">{role.company_name}</td>
+                    <td className="px-4 py-4 text-portal-muted">{role.title}</td>
+                    <td className="px-4 py-4">
+                      <RoleEditButton isEditing={isEditing} onClick={() => setEditingRoleId((current) => current === role.id ? null : role.id)} />
                     </td>
+                    <td className="px-4 py-4 text-portal-muted">{role.location ?? "-"}</td>
+                    <td className="px-4 py-4 text-portal-muted">{role.duration ?? "-"}</td>
+                    <td className="px-4 py-4 text-portal-muted">{role.stipend ?? "-"}</td>
+                    <td className="px-4 py-4">
+                      {role.jd_signed_url ? (
+                        <a className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky" href={role.jd_signed_url} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          View JD
+                        </a>
+                      ) : <span className="text-portal-muted">Text only</span>}
+                    </td>
+                    <td className="px-4 py-4 text-portal-muted">{formatDate(role.deadline)}</td>
+                    <td className="px-4 py-4 text-portal-muted">{role.gd_applicable ? "Yes" : "No"}</td>
+                    <td className="px-4 py-4"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${roleStatusStyle[role.status]}`}>{role.status}</span></td>
                   </tr>
-                ) : null}
-              </Fragment>
-            ))}
+                  {isEditing ? (
+                    <tr>
+                      <td className="bg-white px-4 py-4" colSpan={10}>
+                        <RoleEditPanel role={role} onCancel={() => setEditingRoleId(null)} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
