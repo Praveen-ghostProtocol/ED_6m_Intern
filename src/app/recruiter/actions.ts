@@ -159,6 +159,89 @@ export async function createCompanyRole(
 
   return { success: "Role created." };
 }
+export async function updateRecruiterCompanyRole(
+  _previousState: RecruiterActionState,
+  formData: FormData
+): Promise<RecruiterActionState> {
+  const { recruiter } = await requireRecruiterContext();
+
+  if (!recruiter) {
+    return { error: "Ask the internship organizer to link this login to a company first." };
+  }
+
+  const roleId = uuidSchema.safeParse(formData.get("roleId"));
+  const status = roleStatusSchema.safeParse(formData.get("status"));
+  const title = textValue(formData, "title");
+  const jobDescription = textValue(formData, "jobDescription");
+  const jdPdf = getOptionalPdfFile(formData, "jdPdf");
+
+  if (!roleId.success) return { error: "Choose a valid role to update." };
+  if (!status.success) return { error: "Choose a valid role status." };
+  if (title.length < 2) return { error: "Role title is required." };
+
+  const supabase = await createClient();
+  const { data: existingRole, error: existingError } = await supabase
+    .from("internship_roles")
+    .select("id,company_id,jd_storage_path")
+    .eq("id", roleId.data)
+    .eq("company_id", recruiter.company_id)
+    .maybeSingle();
+
+  if (existingError) return { error: existingError.message };
+  if (!existingRole) return { error: "This role does not belong to your company account." };
+  if (jobDescription.length < 10 && !jdPdf && !existingRole.jd_storage_path) {
+    return { error: "Add a JD PDF or enter a job description." };
+  }
+
+  const uploadedJd = jdPdf ? await uploadJobDescriptionPdf(supabase, jdPdf, recruiter.company_id) : { data: null, error: null };
+  if (uploadedJd.error) return { error: uploadedJd.error };
+
+  const update: Record<string, string | boolean | number | null> = {
+    title,
+    duration: nullableText(formData, "duration"),
+    stipend: nullableText(formData, "stipend"),
+    location: nullableText(formData, "location"),
+    eligibility: nullableText(formData, "eligibility"),
+    job_description: jobDescription || "JD uploaded as PDF.",
+    selection_process: nullableText(formData, "selectionProcess"),
+    gd_applicable: formData.get("gdApplicable") === "on",
+    deadline: dateToDeadline(textValue(formData, "deadline")),
+    status: status.data
+  };
+
+  if (uploadedJd.data) {
+    update.jd_file_name = uploadedJd.data.fileName;
+    update.jd_storage_path = uploadedJd.data.storagePath;
+    update.jd_file_size_bytes = uploadedJd.data.fileSizeBytes;
+  }
+
+  const { error } = await supabase
+    .from("internship_roles")
+    .update(update)
+    .eq("id", roleId.data)
+    .eq("company_id", recruiter.company_id);
+
+  if (error) {
+    if (uploadedJd.data?.storagePath) {
+      await supabase.storage.from("job-descriptions").remove([uploadedJd.data.storagePath]);
+    }
+
+    return { error: error.message };
+  }
+
+  if (uploadedJd.data?.storagePath && existingRole.jd_storage_path) {
+    await supabase.storage.from("job-descriptions").remove([existingRole.jd_storage_path as string]);
+  }
+
+  revalidatePath("/recruiter");
+  revalidatePath("/recruiter/roles");
+  revalidatePath("/recruiter/applications");
+  revalidatePath("/student/companies");
+  revalidatePath("/organizer/roles");
+  revalidatePath("/organizer/applications");
+
+  return { success: "Role updated." };
+}
 const applicationStageFields = [
   "resume_shortlist_status",
   "test_status",

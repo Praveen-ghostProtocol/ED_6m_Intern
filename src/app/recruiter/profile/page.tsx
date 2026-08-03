@@ -1,3 +1,4 @@
+import { CompanyDetailsEditor } from "@/components/recruiter/CompanyDetailsEditor";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { requireRole } from "@/lib/auth/guards";
@@ -17,16 +18,18 @@ export default async function RecruiterProfilePage() {
         <EmptyState title="Company profile not found" description="Ask the internship organizer to link this login to a company." />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold">Account Details</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Name</dt><dd className="mt-1">{recruiter.full_name ?? "Not provided"}</dd></div>
-              <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Email</dt><dd className="mt-1">{recruiter.email}</dd></div>
-              <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Company</dt><dd className="mt-1">{recruiter.company_name}</dd></div>
-              <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Designation</dt><dd className="mt-1">{recruiter.designation ?? "Not provided"}</dd></div>
-              <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Account Status</dt><dd className="mt-1">{recruiter.is_active ? "Active" : "Inactive"}</dd></div>
-            </dl>
-          </section>
+          <div className="space-y-5">
+            <section className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold">Account Details</h2>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Name</dt><dd className="mt-1">{recruiter.full_name ?? "Not provided"}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Email</dt><dd className="mt-1">{recruiter.email}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Designation</dt><dd className="mt-1">{recruiter.designation ?? "Not provided"}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Account Status</dt><dd className="mt-1">{recruiter.is_active ? "Active" : "Inactive"}</dd></div>
+              </dl>
+            </section>
+            <CompanyDetailsEditor recruiter={recruiter} />
+          </div>
 
           <section className="rounded-portal border border-portal-line bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold">Company Roles</h2>
