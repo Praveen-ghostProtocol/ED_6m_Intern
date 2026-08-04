@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UploadCloud } from "lucide-react";
+import { ExternalLink, UploadCloud } from "lucide-react";
 import { updateApplicationsForRole } from "@/app/organizer/actions";
 import { ApplicationCsvExport } from "@/components/organizer/ApplicationCsvExport";
 import { PortalShell } from "@/components/portal/PortalShell";
@@ -98,12 +98,18 @@ function ApplicationCard({ application }: { application: OrganizerApplication })
   return (
     <article className="rounded-portal border border-portal-line bg-white p-5 shadow-sm" key={application.id}>
       <input name="applicationId" type="hidden" value={application.id} />
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{application.student_name ?? application.student_email}</h2>
           <p className="mt-1 text-sm text-portal-muted">{application.student_roll_number} - {application.resume_file_name} - applied {formatDate(application.applied_at)}</p>
           <p className="mt-1 text-xs text-portal-muted">{application.student_email}</p>
         </div>
+        {application.resume_signed_url ? (
+          <a className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky" href={application.resume_signed_url} target="_blank" rel="noreferrer">
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            View Resume
+          </a>
+        ) : <span className="text-sm text-portal-muted">Resume link unavailable</span>}
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-5">
         <StageSelect application={application} fieldName="resume_shortlist_status" label="Resume Shortlist" />

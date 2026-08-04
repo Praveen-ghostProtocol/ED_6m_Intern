@@ -166,38 +166,44 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name,storage_path)")
     .order("applied_at", { ascending: false });
 
-  return (data ?? []).map((application) => {
-    const student = one(application.students) as Record<string, unknown> | null;
-    const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
-    const role = one(application.internship_roles) as Record<string, unknown> | null;
-    const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
-    const resume = one(application.resumes) as Record<string, unknown> | null;
+  return Promise.all(
+    (data ?? []).map(async (application) => {
+      const student = one(application.students) as Record<string, unknown> | null;
+      const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+      const role = one(application.internship_roles) as Record<string, unknown> | null;
+      const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
+      const resume = one(application.resumes) as Record<string, unknown> | null;
+      const resumeStoragePath = resume?.storage_path as string | null | undefined;
+      const signed = resumeStoragePath
+        ? await supabase.storage.from("resumes").createSignedUrl(resumeStoragePath, 60 * 10)
+        : { data: null };
 
-    return {
-      id: application.id as string,
-      student_roll_number: (student?.roll_number as string | undefined) ?? "",
-      student_email: (profile?.email as string | undefined) ?? "",
-      student_name: (profile?.full_name as string | null | undefined) ?? null,
-      student_cgpa: (student?.cgpa as number | null | undefined) ?? null,
-      student_branch_specialisation: (student?.branch_specialisation as string | null | undefined) ?? null,
-      role_id: application.role_id as string,
-      company_name: (company?.name as string | undefined) ?? "Company",
-      role_title: (role?.title as string | undefined) ?? "Role",
-      resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
-      applied_at: application.applied_at as string,
-      gd_applicable: Boolean(role?.gd_applicable),
-      resume_shortlist_status: application.resume_shortlist_status as OrganizerApplication["resume_shortlist_status"],
-      test_attended: (application.test_attended as boolean | null) ?? null,
-      test_status: application.test_status as OrganizerApplication["test_status"],
-      gd_status: application.gd_status as OrganizerApplication["gd_status"],
-      offer_status: application.offer_status as OrganizerApplication["offer_status"]
-    };
-  });
+      return {
+        id: application.id as string,
+        student_roll_number: (student?.roll_number as string | undefined) ?? "",
+        student_email: (profile?.email as string | undefined) ?? "",
+        student_name: (profile?.full_name as string | null | undefined) ?? null,
+        student_cgpa: (student?.cgpa as number | null | undefined) ?? null,
+        student_branch_specialisation: (student?.branch_specialisation as string | null | undefined) ?? null,
+        role_id: application.role_id as string,
+        company_name: (company?.name as string | undefined) ?? "Company",
+        role_title: (role?.title as string | undefined) ?? "Role",
+        resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
+        resume_signed_url: signed.data?.signedUrl ?? null,
+        applied_at: application.applied_at as string,
+        gd_applicable: Boolean(role?.gd_applicable),
+        resume_shortlist_status: application.resume_shortlist_status as OrganizerApplication["resume_shortlist_status"],
+        test_attended: (application.test_attended as boolean | null) ?? null,
+        test_status: application.test_status as OrganizerApplication["test_status"],
+        gd_status: application.gd_status as OrganizerApplication["gd_status"],
+        offer_status: application.offer_status as OrganizerApplication["offer_status"]
+      };
+    })
+  );
 }
-
 export async function getRecruitersForOrganizer(): Promise<OrganizerRecruiter[]> {
   const supabase = await createClient();
   const [{ data: recruiters }, { data: assignments }] = await Promise.all([

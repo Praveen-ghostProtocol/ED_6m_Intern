@@ -73,6 +73,7 @@ export type OrganizerApplication = {
   company_name: string;
   role_title: string;
   resume_file_name: string;
+  resume_signed_url: string | null;
   applied_at: string;
   gd_applicable: boolean;
   resume_shortlist_status: ApplicationStatus;
