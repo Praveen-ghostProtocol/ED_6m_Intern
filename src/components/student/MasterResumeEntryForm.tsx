@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { Save } from "lucide-react";
 import {
   createMasterResumeEntry,
-  updateRejectedMasterResumeEntry,
+  updateMasterResumeEntry,
   type StudentActionState
 } from "@/app/student/actions";
 import type { MasterResumeEntry } from "@/types/student";
@@ -30,7 +30,7 @@ function SubmitButton({ label }: { label: string }) {
 }
 
 export function MasterResumeEntryForm({ entry }: MasterResumeEntryFormProps) {
-  const action = entry ? updateRejectedMasterResumeEntry : createMasterResumeEntry;
+  const action = entry ? updateMasterResumeEntry : createMasterResumeEntry;
   const [state, formAction] = useActionState<StudentActionState, FormData>(action, {});
 
   return (
@@ -70,9 +70,9 @@ export function MasterResumeEntryForm({ entry }: MasterResumeEntryFormProps) {
       </label>
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <p className="text-sm text-portal-muted">
-          {entry ? "Rejected entries can be corrected and sent back for review." : "Each entry is reviewed by your assigned verifier or the organizer."}
+          {entry ? "Pending and rejected entries can be edited until they are approved." : "Each entry is reviewed by your assigned verifier or the organizer."}
         </p>
-        <SubmitButton label={entry ? "Resubmit" : "Submit entry"} />
+        <SubmitButton label={entry ? (entry.status === "pending" ? "Save changes" : "Resubmit") : "Submit entry"} />
       </div>
       {state.error ? (
         <p className="mt-4 rounded-portal border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>

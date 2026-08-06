@@ -464,7 +464,7 @@ export async function createMasterResumeEntry(
   return { success: "Master resume entry submitted for verification." };
 }
 
-export async function updateRejectedMasterResumeEntry(
+export async function updateMasterResumeEntry(
   _previousState: StudentActionState,
   formData: FormData
 ): Promise<StudentActionState> {
@@ -489,7 +489,7 @@ export async function updateRejectedMasterResumeEntry(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("master_resume_entries")
     .update({
       title: parsed.data.title,
@@ -502,10 +502,16 @@ export async function updateRejectedMasterResumeEntry(
     })
     .eq("id", entryId.data)
     .eq("student_id", student.id)
-    .eq("status", "rejected");
+    .in("status", ["pending", "rejected"])
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (!data) {
+    return { error: "Approved master resume entries cannot be edited." };
   }
 
   revalidatePath("/student");
@@ -513,5 +519,5 @@ export async function updateRejectedMasterResumeEntry(
   revalidatePath("/verifier");
   revalidatePath("/verifier/master-resume");
   revalidatePath("/organizer/resumes");
-  return { success: "Entry resubmitted for verification." };
+  return { success: "Entry saved and sent for verification." };
 }

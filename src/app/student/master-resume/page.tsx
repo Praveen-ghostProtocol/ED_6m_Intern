@@ -71,10 +71,10 @@ export default async function StudentMasterResumePage() {
                       <td className="px-4 py-4"><StatusBadge status={entry.status} /></td>
                       <td className="min-w-56 px-4 py-4 text-portal-muted">{entry.verification_note ?? "-"}</td>
                       <td className="min-w-[360px] px-4 py-4">
-                        {entry.status === "rejected" ? (
+                        {entry.status !== "verified" ? (
                           <MasterResumeEntryForm entry={entry} />
                         ) : (
-                          <span className="text-sm text-portal-muted">-</span>
+                          <span className="text-sm text-portal-muted">Approved entries are locked.</span>
                         )}
                       </td>
                     </tr>
