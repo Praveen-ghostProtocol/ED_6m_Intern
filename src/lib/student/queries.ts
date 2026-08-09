@@ -31,8 +31,9 @@ export async function getStudentResumes(studentId: string): Promise<StudentResum
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("resumes")
-    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at")
+    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,removed_at")
     .eq("student_id", studentId)
+    .is("removed_at", null)
     .order("uploaded_at", { ascending: false });
 
   if (error || !data) {
@@ -62,6 +63,7 @@ export async function getVerifiedResumeChoices(studentId: string): Promise<Verif
     .select("id,file_name,uploaded_at")
     .eq("student_id", studentId)
     .eq("status", "verified")
+    .is("removed_at", null)
     .order("uploaded_at", { ascending: false });
 
   if (error || !data) {

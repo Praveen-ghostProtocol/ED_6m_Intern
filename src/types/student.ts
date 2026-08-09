@@ -42,6 +42,7 @@ export type StudentResume = {
   status: ResumeStatus;
   verification_note: string | null;
   uploaded_at: string;
+  removed_at: string | null;
   signed_url: string | null;
 };
 

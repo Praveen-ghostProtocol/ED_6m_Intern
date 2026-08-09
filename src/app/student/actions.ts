@@ -191,7 +191,8 @@ export async function uploadResume(
   const { count } = await supabase
     .from("resumes")
     .select("id", { count: "exact", head: true })
-    .eq("student_id", studentId);
+    .eq("student_id", studentId)
+    .is("removed_at", null);
 
   if ((count ?? 0) >= 3) {
     return { error: "You can upload a maximum of three resumes." };
@@ -228,6 +229,109 @@ export async function uploadResume(
   revalidatePath("/student/resumes");
 
   return { success: "Resume uploaded. Verification status is pending." };
+}
+
+export async function updateResumeFile(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  let studentId: string;
+
+  try {
+    const context = await requireStudentContext();
+    studentId = context.student.id;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not confirm student access." };
+  }
+
+  const resumeResult = uuidSchema.safeParse(formData.get("resumeId"));
+  if (!resumeResult.success) {
+    return { error: "Choose a valid resume to update." };
+  }
+
+  const file = formData.get("resume");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a PDF resume to upload." };
+  }
+
+  if (file.type !== "application/pdf") {
+    return { error: "Only PDF resumes are allowed." };
+  }
+
+  if (file.size > maxResumeSizeBytes) {
+    return { error: "Resume size must be 5 MB or less." };
+  }
+
+  const supabase = await createClient();
+  const safeName = sanitizeFileName(file.name);
+  const storagePath = `${studentId}/${Date.now()}-${safeName}`;
+  const { error: uploadError } = await supabase.storage
+    .from("resumes")
+    .upload(storagePath, file, {
+      contentType: "application/pdf",
+      upsert: false
+    });
+
+  if (uploadError) {
+    return { error: "Could not upload the resume. Please try again." };
+  }
+
+  const { error: replaceError } = await supabase.rpc("replace_student_resume", {
+    target_resume_id: resumeResult.data,
+    new_file_name: safeName,
+    new_storage_path: storagePath,
+    new_file_size_bytes: file.size
+  });
+
+  if (replaceError) {
+    await supabase.storage.from("resumes").remove([storagePath]);
+    return { error: replaceError.message };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/student/resumes");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/resumes");
+  revalidatePath("/verifier/students");
+  revalidatePath("/organizer/resumes");
+  revalidatePath("/organizer/verifiers");
+
+  return { success: "Resume updated and sent for verification." };
+}
+
+export async function removeResume(
+  _previousState: StudentActionState,
+  formData: FormData
+): Promise<StudentActionState> {
+  try {
+    await requireStudentContext();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not confirm student access." };
+  }
+
+  const resumeResult = uuidSchema.safeParse(formData.get("resumeId"));
+  if (!resumeResult.success) {
+    return { error: "Choose a valid resume to remove." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_student_resume", {
+    target_resume_id: resumeResult.data
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/student/resumes");
+  revalidatePath("/verifier");
+  revalidatePath("/verifier/resumes");
+  revalidatePath("/verifier/students");
+  revalidatePath("/organizer/resumes");
+  revalidatePath("/organizer/verifiers");
+
+  return { success: "Resume removed. The original upload is retained in storage for audit history." };
 }
 
 export async function applyToRole(

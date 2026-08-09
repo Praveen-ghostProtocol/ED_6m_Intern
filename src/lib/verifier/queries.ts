@@ -29,7 +29,7 @@ export async function getVerifierDashboardStats(profileId: string): Promise<Veri
 
   const [pendingMasterEntries, pendingResumes, rejectedMasterEntries] = await Promise.all([
     supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "pending"),
-    supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "pending"),
+    supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "pending").is("removed_at", null),
     supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "rejected")
   ]);
 
@@ -52,7 +52,7 @@ export async function getAssignedStudentsForVerifier(profileId: string): Promise
   const studentIds = (assignments ?? []).map((assignment) => assignment.student_id as string);
   const [{ data: masterEntries }, { data: resumes }] = await Promise.all([
     studentIds.length > 0 ? supabase.from("master_resume_entries").select("student_id").in("student_id", studentIds) : Promise.resolve({ data: [] }),
-    studentIds.length > 0 ? supabase.from("resumes").select("student_id").in("student_id", studentIds) : Promise.resolve({ data: [] })
+    studentIds.length > 0 ? supabase.from("resumes").select("student_id").in("student_id", studentIds).is("removed_at", null) : Promise.resolve({ data: [] })
   ]);
 
   const masterCounts = new Map<string, number>();
@@ -128,6 +128,7 @@ export async function getResumesForVerifier(profileId: string): Promise<Verifier
     .from("resumes")
     .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
     .in("student_id", studentIds)
+    .is("removed_at", null)
     .order("uploaded_at", { ascending: true });
 
   return Promise.all(

@@ -80,7 +80,7 @@ export async function getOrganizerDashboardStats(): Promise<OrganizerDashboardSt
     supabase.from("companies").select("id", { count: "exact", head: true }),
     supabase.from("internship_roles").select("id", { count: "exact", head: true }),
     supabase.from("applications").select("id", { count: "exact", head: true }),
-    supabase.from("resumes").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("resumes").select("id", { count: "exact", head: true }).eq("status", "pending").is("removed_at", null),
     supabase.from("applications").select("id", { count: "exact", head: true }).eq("offer_status", "offer_given")
   ]);
 
@@ -101,7 +101,7 @@ export async function getStudentsForOrganizer(): Promise<OrganizerStudent[]> {
       .from("students")
       .select("id,roll_number,cgpa,branch,branch_specialisation,profile_completed_at,profiles(email,full_name,is_active,must_change_password)")
       .order("roll_number", { ascending: true }),
-    supabase.from("resumes").select("student_id"),
+    supabase.from("resumes").select("student_id").is("removed_at", null),
     supabase.from("applications").select("student_id")
   ]);
 
@@ -136,6 +136,7 @@ export async function getPendingResumesForOrganizer(): Promise<OrganizerResume[]
     .from("resumes")
     .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
     .eq("status", "pending")
+    .is("removed_at", null)
     .order("uploaded_at", { ascending: true });
 
   const resumes = data ?? [];
@@ -410,7 +411,8 @@ export async function getVerificationItemsForOrganizer(): Promise<OrganizerVerif
   const [{ data: resumes }, { data: masterEntries }, { data: assignments }, { data: verifierProfiles }] = await Promise.all([
     supabase
       .from("resumes")
-      .select("id,student_id,file_name,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))"),
+      .select("id,student_id,file_name,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
+      .is("removed_at", null),
     supabase
       .from("master_resume_entries")
       .select("id,student_id,title,status,verification_note,created_at,students(roll_number,profiles(email,full_name))"),
