@@ -37,3 +37,12 @@ export function assertSupabasePublicEnv() {
   requirePublicSupabaseEnv("NEXT_PUBLIC_SUPABASE_URL");
   requirePublicSupabaseEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
+export function getSupabaseServiceRoleKey() {
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!value) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for server-only admin operations.");
+  }
+
+  return value;
+}

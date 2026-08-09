@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type {
   OrganizerApplication,
@@ -20,6 +21,56 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 
 function increment(map: Map<string, number>, key: string) {
   map.set(key, (map.get(key) ?? 0) + 1);
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+function resumeSharePath(token: string) {
+  return `/resume/share/${token}`;
+}
+
+async function getOrCreateResumeSharePath(supabase: SupabaseServerClient, applicationId: string, resumeId: string | null) {
+  if (!resumeId) return null;
+
+  const { data: existing } = await supabase
+    .from("resume_share_links")
+    .select("token,is_active")
+    .eq("application_id", applicationId)
+    .eq("resume_id", resumeId)
+    .maybeSingle();
+
+  if (existing?.token) {
+    return existing.is_active === false ? null : resumeSharePath(existing.token as string);
+  }
+
+  const token = randomBytes(32).toString("base64url");
+  const { data: inserted } = await supabase
+    .from("resume_share_links")
+    .insert({
+      application_id: applicationId,
+      resume_id: resumeId,
+      token,
+      is_active: true
+    })
+    .select("token")
+    .single();
+
+  if (inserted?.token) {
+    return resumeSharePath(inserted.token as string);
+  }
+
+  const { data: retried } = await supabase
+    .from("resume_share_links")
+    .select("token,is_active")
+    .eq("application_id", applicationId)
+    .eq("resume_id", resumeId)
+    .maybeSingle();
+
+  if (retried?.token) {
+    return retried.is_active === false ? null : resumeSharePath(retried.token as string);
+  }
+
+  return null;
 }
 
 export async function getOrganizerDashboardStats(): Promise<OrganizerDashboardStats> {
@@ -162,11 +213,12 @@ export async function getRolesForOrganizer(): Promise<OrganizerRole[]> {
   );
 }
 
-export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplication[]> {
+export async function getAllApplicationsForOrganizer(options: { includeShareLinks?: boolean } = {}): Promise<OrganizerApplication[]> {
   const supabase = await createClient();
+  const includeShareLinks = options.includeShareLinks === true;
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(file_name,storage_path)")
+    .select("id,resume_id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
     .order("applied_at", { ascending: false });
 
   return Promise.all(
@@ -176,10 +228,14 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
       const role = one(application.internship_roles) as Record<string, unknown> | null;
       const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
       const resume = one(application.resumes) as Record<string, unknown> | null;
+      const resumeId = (application.resume_id as string | null | undefined) ?? (resume?.id as string | null | undefined) ?? null;
       const resumeStoragePath = resume?.storage_path as string | null | undefined;
-      const signed = resumeStoragePath
-        ? await supabase.storage.from("resumes").createSignedUrl(resumeStoragePath, 60 * 10)
-        : { data: null };
+      const [signed, sharePath] = await Promise.all([
+        resumeStoragePath
+          ? supabase.storage.from("resumes").createSignedUrl(resumeStoragePath, 60 * 10)
+          : Promise.resolve({ data: null }),
+        includeShareLinks ? getOrCreateResumeSharePath(supabase, application.id as string, resumeId) : Promise.resolve(null)
+      ]);
 
       return {
         id: application.id as string,
@@ -193,6 +249,7 @@ export async function getAllApplicationsForOrganizer(): Promise<OrganizerApplica
         role_title: (role?.title as string | undefined) ?? "Role",
         resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
         resume_signed_url: signed.data?.signedUrl ?? null,
+        resume_share_path: sharePath,
         applied_at: application.applied_at as string,
         gd_applicable: Boolean(role?.gd_applicable),
         resume_shortlist_status: application.resume_shortlist_status as OrganizerApplication["resume_shortlist_status"],

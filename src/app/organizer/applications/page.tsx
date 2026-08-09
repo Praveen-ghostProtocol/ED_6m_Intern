@@ -125,7 +125,7 @@ function ApplicationCard({ application }: { application: OrganizerApplication })
 export default async function OrganizerApplicationsPage({ searchParams }: { searchParams: Promise<{ q?: string; roleId?: string }> }) {
   const profile = await requireRole("organizer");
   const params = await searchParams;
-  const [roles, allApplications] = await Promise.all([getRolesForOrganizer(), getAllApplicationsForOrganizer()]);
+  const [roles, allApplications] = await Promise.all([getRolesForOrganizer(), getAllApplicationsForOrganizer({ includeShareLinks: true })]);
   const selectedRole = roles.find((role) => role.id === params.roleId) ?? null;
 
   if (!selectedRole) {
