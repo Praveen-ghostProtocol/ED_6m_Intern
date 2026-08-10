@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { rejectAssignedResume, rejectMasterResumeEntry, verifyAssignedResume, verifyMasterResumeEntry } from "@/app/verifier/actions";
+import {
+  rejectAssignedResume,
+  rejectMasterResumeEntry,
+  undoAssignedResumeVerification,
+  undoMasterResumeEntryVerification,
+  verifyAssignedResume,
+  verifyMasterResumeEntry
+} from "@/app/verifier/actions";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { EmptyState } from "@/components/student/EmptyState";
 import { StatusBadge } from "@/components/student/StatusBadge";
@@ -37,7 +44,13 @@ function MasterEntryCard({ entry }: { entry: VerifierMasterResumeEntry }) {
           <form action={verifyMasterResumeEntry} className="grid gap-3 md:grid-cols-[1fr_auto]"><input name="studentId" type="hidden" value={entry.student_id} /><input name="entryId" type="hidden" value={entry.id} /><input className="h-10 rounded-portal border border-portal-line px-3 text-sm" name="verificationNote" placeholder="Optional comment" /><button className="h-10 rounded-portal bg-portal-teal px-4 text-sm font-semibold text-white" type="submit">Verify</button></form>
           <form action={rejectMasterResumeEntry} className="grid gap-3 md:grid-cols-[1fr_auto]"><input name="studentId" type="hidden" value={entry.student_id} /><input name="entryId" type="hidden" value={entry.id} /><input className="h-10 rounded-portal border border-portal-line px-3 text-sm" name="verificationNote" placeholder="Rejection comment" /><button className="h-10 rounded-portal border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700" type="submit">Reject</button></form>
         </div>
-      ) : null}
+      ) : (
+        <form action={undoMasterResumeEntryVerification} className="mt-4">
+          <input name="studentId" type="hidden" value={entry.student_id} />
+          <input name="entryId" type="hidden" value={entry.id} />
+          <button className="h-10 rounded-portal border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100" type="submit">Undo decision</button>
+        </form>
+      )}
     </article>
   );
 }
@@ -58,7 +71,13 @@ function ResumeCard({ resume }: { resume: VerifierResume }) {
           <form action={verifyAssignedResume} className="grid gap-3 md:grid-cols-[1fr_auto]"><input name="studentId" type="hidden" value={resume.student_id} /><input name="resumeId" type="hidden" value={resume.id} /><input className="h-10 rounded-portal border border-portal-line px-3 text-sm" name="verificationNote" placeholder="Optional comment" /><button className="h-10 rounded-portal bg-portal-teal px-4 text-sm font-semibold text-white" type="submit">Verify</button></form>
           <form action={rejectAssignedResume} className="grid gap-3 md:grid-cols-[1fr_auto]"><input name="studentId" type="hidden" value={resume.student_id} /><input name="resumeId" type="hidden" value={resume.id} /><input className="h-10 rounded-portal border border-portal-line px-3 text-sm" name="verificationNote" placeholder="Rejection comment" /><button className="h-10 rounded-portal border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700" type="submit">Reject</button></form>
         </div>
-      ) : null}
+      ) : (
+        <form action={undoAssignedResumeVerification} className="mt-4">
+          <input name="studentId" type="hidden" value={resume.student_id} />
+          <input name="resumeId" type="hidden" value={resume.id} />
+          <button className="h-10 rounded-portal border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100" type="submit">Undo decision</button>
+        </form>
+      )}
     </article>
   );
 }
