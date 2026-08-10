@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { embeddedStudentIsActive } from "@/lib/students/active";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET(_request: Request, context: ShareRouteContext) {
   const supabase = createAdminClient();
   const { data: shareLink, error } = await supabase
     .from("resume_share_links")
-    .select("id,is_active,resumes(storage_path,file_name)")
+    .select("id,is_active,resumes(storage_path,file_name,students(profiles(is_active)))")
     .eq("token", token)
     .maybeSingle();
 
@@ -39,7 +40,7 @@ export async function GET(_request: Request, context: ShareRouteContext) {
   const resume = one(shareLink.resumes) as Record<string, unknown> | null;
   const storagePath = resume?.storage_path as string | null | undefined;
 
-  if (!storagePath) {
+  if (!storagePath || !embeddedStudentIsActive(resume?.students)) {
     return unavailable();
   }
 

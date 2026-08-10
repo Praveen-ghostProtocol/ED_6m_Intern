@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { embeddedProfileIsActive, getActiveStudentIds } from "@/lib/students/active";
 import type {
   VerifierDashboardStats,
   VerifierMasterResumeEntry,
@@ -15,13 +16,24 @@ function increment(map: Map<string, number>, key: string) {
   map.set(key, (map.get(key) ?? 0) + 1);
 }
 
-export async function getVerifierDashboardStats(profileId: string): Promise<VerifierDashboardStats> {
+async function getActiveAssignedStudentIdsForVerifier(profileId: string) {
   const supabase = await createClient();
   const { data: assignments } = await supabase
     .from("student_verifier_assignments")
-    .select("student_id")
+    .select("student_id,students(profiles(is_active))")
     .eq("verifier_profile_id", profileId);
-  const studentIds = (assignments ?? []).map((assignment) => assignment.student_id as string);
+
+  return (assignments ?? [])
+    .filter((assignment) => {
+      const student = one(assignment.students) as Record<string, unknown> | null;
+      return embeddedProfileIsActive(student?.profiles);
+    })
+    .map((assignment) => assignment.student_id as string);
+}
+
+export async function getVerifierDashboardStats(profileId: string): Promise<VerifierDashboardStats> {
+  const supabase = await createClient();
+  const studentIds = await getActiveAssignedStudentIdsForVerifier(profileId);
 
   if (studentIds.length === 0) {
     return { assignedStudents: 0, pendingMasterEntries: 0, pendingResumes: 0, rejectedMasterEntries: 0 };
@@ -43,10 +55,15 @@ export async function getVerifierDashboardStats(profileId: string): Promise<Veri
 
 export async function getAssignedStudentsForVerifier(profileId: string): Promise<VerifierStudent[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const { data: assignments } = await supabase
     .from("student_verifier_assignments")
-    .select("student_id,students(id,roll_number,cgpa,branch_specialisation,profiles(email,full_name))")
+    .select("student_id,students(id,roll_number,cgpa,branch_specialisation,profiles(email,full_name,is_active))")
     .eq("verifier_profile_id", profileId)
+    .in("student_id", activeStudentIds)
     .order("assigned_at", { ascending: false });
 
   const studentIds = (assignments ?? []).map((assignment) => assignment.student_id as string);
@@ -60,7 +77,10 @@ export async function getAssignedStudentsForVerifier(profileId: string): Promise
   (masterEntries ?? []).forEach((entry) => increment(masterCounts, entry.student_id as string));
   (resumes ?? []).forEach((resume) => increment(resumeCounts, resume.student_id as string));
 
-  return (assignments ?? []).map((assignment) => {
+  return (assignments ?? []).filter((assignment) => {
+    const student = one(assignment.students) as Record<string, unknown> | null;
+    return embeddedProfileIsActive(student?.profiles);
+  }).map((assignment) => {
     const student = one(assignment.students) as Record<string, unknown> | null;
     const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
     const studentId = assignment.student_id as string;
@@ -80,21 +100,20 @@ export async function getAssignedStudentsForVerifier(profileId: string): Promise
 
 export async function getMasterResumeEntriesForVerifier(profileId: string): Promise<VerifierMasterResumeEntry[]> {
   const supabase = await createClient();
-  const { data: assignments } = await supabase
-    .from("student_verifier_assignments")
-    .select("student_id")
-    .eq("verifier_profile_id", profileId);
-  const studentIds = (assignments ?? []).map((assignment) => assignment.student_id as string);
+  const studentIds = await getActiveAssignedStudentIdsForVerifier(profileId);
 
   if (studentIds.length === 0) return [];
 
   const { data } = await supabase
     .from("master_resume_entries")
-    .select("id,student_id,title,description,link,status,verification_note,created_at,students(roll_number,profiles(email,full_name))")
+    .select("id,student_id,title,description,link,status,verification_note,created_at,students(roll_number,profiles(email,full_name,is_active))")
     .in("student_id", studentIds)
     .order("created_at", { ascending: true });
 
-  return (data ?? []).map((entry) => {
+  return (data ?? []).filter((entry) => {
+    const student = one(entry.students) as Record<string, unknown> | null;
+    return embeddedProfileIsActive(student?.profiles);
+  }).map((entry) => {
     const student = one(entry.students) as Record<string, unknown> | null;
     const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
 
@@ -116,23 +135,22 @@ export async function getMasterResumeEntriesForVerifier(profileId: string): Prom
 
 export async function getResumesForVerifier(profileId: string): Promise<VerifierResume[]> {
   const supabase = await createClient();
-  const { data: assignments } = await supabase
-    .from("student_verifier_assignments")
-    .select("student_id")
-    .eq("verifier_profile_id", profileId);
-  const studentIds = (assignments ?? []).map((assignment) => assignment.student_id as string);
+  const studentIds = await getActiveAssignedStudentIdsForVerifier(profileId);
 
   if (studentIds.length === 0) return [];
 
   const { data } = await supabase
     .from("resumes")
-    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
+    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name,is_active))")
     .in("student_id", studentIds)
     .is("removed_at", null)
     .order("uploaded_at", { ascending: true });
 
   return Promise.all(
-    (data ?? []).map(async (resume) => {
+    (data ?? []).filter((resume) => {
+      const student = one(resume.students) as Record<string, unknown> | null;
+      return embeddedProfileIsActive(student?.profiles);
+    }).map(async (resume) => {
       const student = one(resume.students) as Record<string, unknown> | null;
       const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
       const { data: signed } = await supabase.storage.from("resumes").createSignedUrl(resume.storage_path as string, 60 * 10);

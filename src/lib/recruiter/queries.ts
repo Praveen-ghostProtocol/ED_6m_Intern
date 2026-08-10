@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { embeddedProfileIsActive, getActiveStudentIds } from "@/lib/students/active";
 import type {
   RecruiterApplication,
   RecruiterDashboardStats,
@@ -89,19 +90,24 @@ export async function getApplicationsForRecruiter(recruiterId: string): Promise<
   const supabase = await createClient();
   const assignedRoles = await getAssignedRolesForRecruiter(recruiterId);
   const roleIds = assignedRoles.map((role) => role.id);
+  const activeStudentIds = await getActiveStudentIds(supabase);
 
-  if (roleIds.length === 0) {
+  if (roleIds.length === 0 || activeStudentIds.length === 0) {
     return [];
   }
 
   const { data } = await supabase
     .from("applications")
-    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name,description)),resumes(file_name,storage_path)")
+    .select("id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,profiles(email,full_name,is_active)),internship_roles(title,gd_applicable,companies(name,description)),resumes(file_name,storage_path)")
     .in("role_id", roleIds)
+    .in("student_id", activeStudentIds)
     .order("applied_at", { ascending: false });
 
   return Promise.all(
-    (data ?? []).map(async (application) => {
+    (data ?? []).filter((application) => {
+      const student = one(application.students) as Record<string, unknown> | null;
+      return embeddedProfileIsActive(student?.profiles);
+    }).map(async (application) => {
       const student = one(application.students) as Record<string, unknown> | null;
       const profile = one(student?.profiles as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
       const role = one(application.internship_roles) as Record<string, unknown> | null;

@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { embeddedProfileIsActive, embeddedStudentIsActive, getActiveStudentIds } from "@/lib/students/active";
 import type {
   OrganizerApplication,
   OrganizerCompany,
@@ -75,17 +76,23 @@ async function getOrCreateResumeSharePath(supabase: SupabaseServerClient, applic
 
 export async function getOrganizerDashboardStats(): Promise<OrganizerDashboardStats> {
   const supabase = await createClient();
-  const [students, companies, roles, applications, pendingResumes, offers] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }),
+  const activeStudentIds = await getActiveStudentIds(supabase);
+  const [companies, roles, applications, pendingResumes, offers] = await Promise.all([
     supabase.from("companies").select("id", { count: "exact", head: true }),
     supabase.from("internship_roles").select("id", { count: "exact", head: true }),
-    supabase.from("applications").select("id", { count: "exact", head: true }),
-    supabase.from("resumes").select("id", { count: "exact", head: true }).eq("status", "pending").is("removed_at", null),
-    supabase.from("applications").select("id", { count: "exact", head: true }).eq("offer_status", "offer_given")
+    activeStudentIds.length > 0
+      ? supabase.from("applications").select("id", { count: "exact", head: true }).in("student_id", activeStudentIds)
+      : Promise.resolve({ count: 0 }),
+    activeStudentIds.length > 0
+      ? supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", activeStudentIds).eq("status", "pending").is("removed_at", null)
+      : Promise.resolve({ count: 0 }),
+    activeStudentIds.length > 0
+      ? supabase.from("applications").select("id", { count: "exact", head: true }).in("student_id", activeStudentIds).eq("offer_status", "offer_given")
+      : Promise.resolve({ count: 0 })
   ]);
 
   return {
-    students: students.count ?? 0,
+    students: activeStudentIds.length,
     companies: companies.count ?? 0,
     roles: roles.count ?? 0,
     applications: applications.count ?? 0,
@@ -110,7 +117,7 @@ export async function getStudentsForOrganizer(): Promise<OrganizerStudent[]> {
   (resumes ?? []).forEach((resume) => increment(resumeCounts, resume.student_id as string));
   (applications ?? []).forEach((application) => increment(applicationCounts, application.student_id as string));
 
-  return (students ?? []).map((student) => {
+  return (students ?? []).filter((student) => embeddedProfileIsActive(student.profiles)).map((student) => {
     const profile = one(student.profiles) as Record<string, unknown> | null;
 
     return {
@@ -132,9 +139,14 @@ export async function getStudentsForOrganizer(): Promise<OrganizerStudent[]> {
 
 export async function getPendingResumesForOrganizer(): Promise<OrganizerResume[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const { data } = await supabase
     .from("resumes")
-    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
+    .select("id,student_id,file_name,storage_path,file_size_bytes,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name,is_active))")
+    .in("student_id", activeStudentIds)
     .eq("status", "pending")
     .is("removed_at", null)
     .order("uploaded_at", { ascending: true });
@@ -217,9 +229,14 @@ export async function getRolesForOrganizer(): Promise<OrganizerRole[]> {
 export async function getAllApplicationsForOrganizer(options: { includeShareLinks?: boolean } = {}): Promise<OrganizerApplication[]> {
   const supabase = await createClient();
   const includeShareLinks = options.includeShareLinks === true;
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const { data } = await supabase
     .from("applications")
-    .select("id,resume_id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
+    .select("id,resume_id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,branch_specialisation,profiles(email,full_name,is_active)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
+    .in("student_id", activeStudentIds)
     .order("applied_at", { ascending: false });
 
   return Promise.all(
@@ -326,6 +343,7 @@ export async function getReportsForOrganizer(): Promise<OrganizerReportRow[]> {
 }
 export async function getVerifiersForOrganizer(): Promise<OrganizerVerifier[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
   const [{ data: profiles }, { data: assignments }] = await Promise.all([
     supabase
       .from("profiles")
@@ -333,7 +351,9 @@ export async function getVerifiersForOrganizer(): Promise<OrganizerVerifier[]> {
       .eq("role", "verifier")
       .eq("is_active", true)
       .order("email", { ascending: true }),
-    supabase.from("student_verifier_assignments").select("verifier_profile_id")
+    activeStudentIds.length > 0
+      ? supabase.from("student_verifier_assignments").select("verifier_profile_id").in("student_id", activeStudentIds)
+      : Promise.resolve({ data: [] })
   ]);
 
   const counts = new Map<string, number>();
@@ -349,9 +369,14 @@ export async function getVerifiersForOrganizer(): Promise<OrganizerVerifier[]> {
 
 export async function getVerifierAssignmentsForOrganizer(): Promise<OrganizerVerifierAssignment[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const { data } = await supabase
     .from("student_verifier_assignments")
-    .select("id,student_id,verifier_profile_id,assigned_at,students(roll_number,profiles(email,full_name))")
+    .select("id,student_id,verifier_profile_id,assigned_at,students(roll_number,profiles(email,full_name,is_active))")
+    .in("student_id", activeStudentIds)
     .order("assigned_at", { ascending: false });
 
   const verifierIds = Array.from(new Set((data ?? []).map((assignment) => assignment.verifier_profile_id as string)));
@@ -381,9 +406,14 @@ export async function getVerifierAssignmentsForOrganizer(): Promise<OrganizerVer
 
 export async function getPendingMasterResumeEntriesForOrganizer(): Promise<OrganizerMasterResumeEntry[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const { data } = await supabase
     .from("master_resume_entries")
-    .select("id,student_id,title,description,link,status,verification_note,created_at,students(roll_number,profiles(email,full_name))")
+    .select("id,student_id,title,description,link,status,verification_note,created_at,students(roll_number,profiles(email,full_name,is_active))")
+    .in("student_id", activeStudentIds)
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
@@ -408,15 +438,21 @@ export async function getPendingMasterResumeEntriesForOrganizer(): Promise<Organ
 }
 export async function getVerificationItemsForOrganizer(): Promise<OrganizerVerificationItem[]> {
   const supabase = await createClient();
+  const activeStudentIds = await getActiveStudentIds(supabase);
+
+  if (activeStudentIds.length === 0) return [];
+
   const [{ data: resumes }, { data: masterEntries }, { data: assignments }, { data: verifierProfiles }] = await Promise.all([
     supabase
       .from("resumes")
-      .select("id,student_id,file_name,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name))")
+      .select("id,student_id,file_name,status,verification_note,uploaded_at,students(roll_number,profiles(email,full_name,is_active))")
+      .in("student_id", activeStudentIds)
       .is("removed_at", null),
     supabase
       .from("master_resume_entries")
-      .select("id,student_id,title,status,verification_note,created_at,students(roll_number,profiles(email,full_name))"),
-    supabase.from("student_verifier_assignments").select("student_id,verifier_profile_id"),
+      .select("id,student_id,title,status,verification_note,created_at,students(roll_number,profiles(email,full_name,is_active))")
+      .in("student_id", activeStudentIds),
+    supabase.from("student_verifier_assignments").select("student_id,verifier_profile_id").in("student_id", activeStudentIds),
     supabase.from("profiles").select("id,email,full_name").eq("role", "verifier")
   ]);
 
@@ -445,7 +481,7 @@ export async function getVerificationItemsForOrganizer(): Promise<OrganizerVerif
     };
   };
 
-  const resumeItems: OrganizerVerificationItem[] = (resumes ?? []).map((resume) => {
+  const resumeItems: OrganizerVerificationItem[] = (resumes ?? []).filter((resume) => embeddedStudentIsActive(resume.students)).map((resume) => {
     const studentId = resume.student_id as string;
     const student = fromStudent(resume.students);
 
@@ -464,7 +500,7 @@ export async function getVerificationItemsForOrganizer(): Promise<OrganizerVerif
     };
   });
 
-  const masterItems: OrganizerVerificationItem[] = (masterEntries ?? []).map((entry) => {
+  const masterItems: OrganizerVerificationItem[] = (masterEntries ?? []).filter((entry) => embeddedStudentIsActive(entry.students)).map((entry) => {
     const studentId = entry.student_id as string;
     const student = fromStudent(entry.students);
 
