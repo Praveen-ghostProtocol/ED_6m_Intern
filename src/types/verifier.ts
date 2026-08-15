@@ -3,8 +3,11 @@ import type { ResumeStatus } from "@/types/student";
 export type VerifierDashboardStats = {
   assignedStudents: number;
   pendingMasterEntries: number;
-  pendingResumes: number;
+  verifiedMasterEntries: number;
   rejectedMasterEntries: number;
+  pendingResumes: number;
+  verifiedResumes: number;
+  rejectedResumes: number;
 };
 
 export type VerifierStudent = {

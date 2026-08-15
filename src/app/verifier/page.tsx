@@ -1,4 +1,4 @@
-import { FileClock, FileText, UsersRound, XCircle } from "lucide-react";
+import { CheckCircle2, FileClock, FileText, UsersRound, XCircle } from "lucide-react";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { requireRole } from "@/lib/auth/guards";
 import { verifierNavigation } from "@/lib/rbac";
@@ -12,8 +12,11 @@ export default async function VerifierDashboardPage() {
   const cards = [
     { label: "Assigned students", value: stats.assignedStudents, icon: UsersRound, tone: "bg-portal-sky text-portal-blue" },
     { label: "Pending master entries", value: stats.pendingMasterEntries, icon: FileText, tone: "bg-portal-mint text-emerald-700" },
+    { label: "Verified master entries", value: stats.verifiedMasterEntries, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "Rejected master entries", value: stats.rejectedMasterEntries, icon: XCircle, tone: "bg-red-50 text-red-700" },
     { label: "Pending PDF resumes", value: stats.pendingResumes, icon: FileClock, tone: "bg-portal-peach text-amber-700" },
-    { label: "Rejected entries", value: stats.rejectedMasterEntries, icon: XCircle, tone: "bg-red-50 text-red-700" }
+    { label: "Verified PDF resumes", value: stats.verifiedResumes, icon: CheckCircle2, tone: "bg-blue-50 text-blue-700" },
+    { label: "Rejected PDF resumes", value: stats.rejectedResumes, icon: XCircle, tone: "bg-rose-50 text-rose-700" }
   ];
 
   return (

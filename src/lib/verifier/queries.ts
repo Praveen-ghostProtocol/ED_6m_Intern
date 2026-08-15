@@ -36,20 +36,34 @@ export async function getVerifierDashboardStats(profileId: string): Promise<Veri
   const studentIds = await getActiveAssignedStudentIdsForVerifier(profileId);
 
   if (studentIds.length === 0) {
-    return { assignedStudents: 0, pendingMasterEntries: 0, pendingResumes: 0, rejectedMasterEntries: 0 };
+    return {
+      assignedStudents: 0,
+      pendingMasterEntries: 0,
+      verifiedMasterEntries: 0,
+      rejectedMasterEntries: 0,
+      pendingResumes: 0,
+      verifiedResumes: 0,
+      rejectedResumes: 0
+    };
   }
 
-  const [pendingMasterEntries, pendingResumes, rejectedMasterEntries] = await Promise.all([
+  const [pendingMasterEntries, verifiedMasterEntries, rejectedMasterEntries, pendingResumes, verifiedResumes, rejectedResumes] = await Promise.all([
     supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "pending"),
+    supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "verified"),
+    supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "rejected"),
     supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "pending").is("removed_at", null),
-    supabase.from("master_resume_entries").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "rejected")
+    supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "verified").is("removed_at", null),
+    supabase.from("resumes").select("id", { count: "exact", head: true }).in("student_id", studentIds).eq("status", "rejected").is("removed_at", null)
   ]);
 
   return {
     assignedStudents: studentIds.length,
     pendingMasterEntries: pendingMasterEntries.count ?? 0,
+    verifiedMasterEntries: verifiedMasterEntries.count ?? 0,
+    rejectedMasterEntries: rejectedMasterEntries.count ?? 0,
     pendingResumes: pendingResumes.count ?? 0,
-    rejectedMasterEntries: rejectedMasterEntries.count ?? 0
+    verifiedResumes: verifiedResumes.count ?? 0,
+    rejectedResumes: rejectedResumes.count ?? 0
   };
 }
 
