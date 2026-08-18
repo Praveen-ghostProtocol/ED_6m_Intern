@@ -19,6 +19,10 @@ function absoluteShareUrl(path: string | null) {
   return new URL(path, window.location.origin).toString();
 }
 
+function resumeViewUrl(application: OrganizerApplication) {
+  return application.resume_signed_url ?? application.resume_share_path;
+}
+
 export function ApplicationCsvExport({ applications, role }: { applications: OrganizerApplication[]; role: OrganizerRole }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(applications.map((application) => application.id)));
 
@@ -123,7 +127,15 @@ export function ApplicationCsvExport({ applications, role }: { applications: Org
                 <td className="px-4 py-3"><input aria-label={`Select ${application.student_name ?? application.student_email}`} checked={selectedIds.has(application.id)} onChange={() => toggle(application.id)} type="checkbox" /></td>
                 <td className="px-4 py-3"><div className="font-semibold">{application.student_name ?? application.student_email}</div><div className="text-xs text-portal-muted">{application.student_email}</div></td>
                 <td className="px-4 py-3 text-portal-muted">{application.student_roll_number}</td>
-                <td className="px-4 py-3 text-portal-muted">{application.resume_share_path ? <a className="font-semibold text-portal-blue" href={application.resume_share_path} target="_blank" rel="noreferrer">{application.resume_file_name}</a> : application.resume_file_name}</td>
+                <td className="px-4 py-3 text-portal-muted">
+                  {resumeViewUrl(application) ? (
+                    <a className="font-semibold text-portal-blue" href={resumeViewUrl(application) ?? undefined} target="_blank" rel="noreferrer">
+                      {application.resume_file_name}
+                    </a>
+                  ) : (
+                    application.resume_file_name
+                  )}
+                </td>
                 <td className="px-4 py-3 text-portal-muted">Resume {statusText(application.resume_shortlist_status)}, Test {statusText(application.test_status)}, Offer {statusText(application.offer_status)}</td>
               </tr>
             ))}
