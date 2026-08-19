@@ -66,6 +66,7 @@ export type OrganizerApplication = {
   id: string;
   student_roll_number: string;
   student_email: string;
+  student_personal_email: string | null;
   student_name: string | null;
   student_cgpa: number | null;
   student_branch_specialisation: string | null;
