@@ -70,6 +70,7 @@ export type CompanyRole = {
   company_id: string;
   company_name: string;
   title: string;
+  status: "open" | "closed";
   duration: string | null;
   location: string | null;
   eligibility: string | null;
@@ -96,4 +97,8 @@ export type StudentApplication = {
   role_title: string;
   company_name: string;
   resume_file_name: string;
+  job_description: string | null;
+  jd_file_name: string | null;
+  jd_signed_url: string | null;
+  selection_process: string | null;
 };

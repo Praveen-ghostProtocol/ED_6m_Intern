@@ -80,9 +80,9 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
     supabase
       .from("internship_roles")
       .select(
-        "id,company_id,title,duration,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,gd_applicable,deadline,companies(name)"
+        "id,company_id,title,status,duration,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,gd_applicable,deadline,companies(name)"
       )
-      .eq("status", "open")
+      .in("status", ["open", "closed"])
       .order("deadline", { ascending: true, nullsFirst: false }),
     supabase
       .from("applications")
@@ -114,6 +114,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
         company_id: role.company_id as string,
         company_name: (company?.name as string | undefined) ?? "Company",
         title: role.title as string,
+        status: role.status as CompanyRole["status"],
         duration: (role.duration as string | null) ?? null,
         location: (role.location as string | null) ?? null,
         eligibility: (role.eligibility as string | null) ?? null,
@@ -137,7 +138,7 @@ export async function getStudentApplications(studentId: string): Promise<Student
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,internship_roles(title,companies(name)),resumes(file_name)"
+      "id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,internship_roles(title,job_description,jd_file_name,jd_storage_path,selection_process,companies(name)),resumes(file_name)"
     )
     .eq("student_id", studentId)
     .order("applied_at", { ascending: false });
@@ -146,10 +147,14 @@ export async function getStudentApplications(studentId: string): Promise<Student
     return [];
   }
 
-  return data.map((application) => {
+  return Promise.all(data.map(async (application) => {
     const role = one(application.internship_roles) as Record<string, unknown> | null;
     const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
     const resume = one(application.resumes) as Record<string, unknown> | null;
+    const jdStoragePath = role?.jd_storage_path as string | null | undefined;
+    const signed = jdStoragePath
+      ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
+      : { data: null };
 
     return {
       id: application.id as string,
@@ -161,9 +166,13 @@ export async function getStudentApplications(studentId: string): Promise<Student
       offer_status: application.offer_status,
       role_title: (role?.title as string | undefined) ?? "Role",
       company_name: (company?.name as string | undefined) ?? "Company",
-      resume_file_name: (resume?.file_name as string | undefined) ?? "Resume"
+      resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
+      job_description: (role?.job_description as string | null | undefined) ?? null,
+      jd_file_name: (role?.jd_file_name as string | null | undefined) ?? null,
+      jd_signed_url: signed.data?.signedUrl ?? null,
+      selection_process: (role?.selection_process as string | null | undefined) ?? null
     } as StudentApplication;
-  });
+  }));
 }
 export async function getStudentMasterResumeEntries(studentId: string): Promise<MasterResumeEntry[]> {
   const supabase = await createClient();

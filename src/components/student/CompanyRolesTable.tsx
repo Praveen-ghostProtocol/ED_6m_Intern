@@ -68,7 +68,8 @@ function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifi
   const action = role.has_applied ? updateApplicationResume : applyToRole;
   const [state, formAction] = useActionState<StudentActionState, FormData>(action, {});
   const deadlinePassed = isDeadlinePassed(role.deadline);
-  const disabled = deadlinePassed || verifiedResumes.length === 0;
+  const roleClosed = role.status !== "open";
+  const disabled = roleClosed || deadlinePassed || verifiedResumes.length === 0;
 
   return (
     <form action={formAction} className="rounded-portal border border-portal-line bg-portal-canvas p-4">
@@ -94,7 +95,9 @@ function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifi
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <p className="text-sm text-portal-muted">
-          {deadlinePassed
+          {roleClosed
+            ? "This role is closed. The JD remains visible, but registration changes are no longer available."
+            : deadlinePassed
             ? "The deadline has passed. This registration can no longer be changed."
             : verifiedResumes.length === 0
               ? "A verified resume is required before registration."
@@ -118,6 +121,7 @@ function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifi
 function RemoveRegistrationForm({ role }: { role: CompanyRole }) {
   const [state, formAction] = useActionState<StudentActionState, FormData>(removeApplication, {});
   const deadlinePassed = isDeadlinePassed(role.deadline);
+  const roleClosed = role.status !== "open";
 
   if (!role.application_id) {
     return null;
@@ -131,7 +135,7 @@ function RemoveRegistrationForm({ role }: { role: CompanyRole }) {
           Remove this registration before the deadline. You can register again later while the role is still open.
         </p>
         <SubmitButton
-          disabled={deadlinePassed}
+          disabled={roleClosed || deadlinePassed}
           icon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
           label="Remove"
           pendingLabel="Removing"
@@ -169,6 +173,8 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
             <tbody className="divide-y divide-portal-line">
               {roles.map((role) => {
                 const deadlinePassed = isDeadlinePassed(role.deadline);
+                const roleClosed = role.status !== "open";
+                const registrationDisabled = roleClosed || deadlinePassed;
 
                 return (
                   <tr className="align-top" key={role.id}>
@@ -203,7 +209,7 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
                       <div className="flex flex-wrap gap-2">
                         <button
                           className="inline-flex h-9 items-center gap-2 rounded-portal bg-portal-teal px-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={deadlinePassed}
+                          disabled={registrationDisabled}
                           onClick={() => setModal({ mode: "register", roleId: role.id })}
                           type="button"
                         >
@@ -213,7 +219,7 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
                         {role.has_applied ? (
                           <button
                             className="inline-flex h-9 items-center gap-2 rounded-portal border border-red-200 px-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={deadlinePassed}
+                            disabled={registrationDisabled}
                             onClick={() => setModal({ mode: "register", roleId: role.id })}
                             type="button"
                           >

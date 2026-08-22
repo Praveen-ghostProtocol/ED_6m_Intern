@@ -5,6 +5,7 @@ import { studentNavigation } from "@/lib/rbac";
 import { requireStudent } from "@/lib/student/guards";
 import { getStudentApplications } from "@/lib/student/queries";
 import type { ApplicationStatus } from "@/types/student";
+import { ExternalLink, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function StudentApplicationsPage() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Company</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">JD</th>
                   <th className="px-4 py-3 font-semibold">Resume Used</th>
                   <th className="px-4 py-3 font-semibold">Applied</th>
                   <th className="px-4 py-3 font-semibold">Resume Shortlist</th>
@@ -72,6 +74,32 @@ export default async function StudentApplicationsPage() {
                   <tr key={application.id}>
                     <td className="px-4 py-4 font-semibold text-portal-ink">{application.company_name}</td>
                     <td className="px-4 py-4 text-portal-muted">{application.role_title}</td>
+                    <td className="px-4 py-4">
+                      {application.jd_signed_url ? (
+                        <a
+                          className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+                          href={application.jd_signed_url}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          View JD
+                        </a>
+                      ) : application.job_description ? (
+                        <details className="max-w-xs rounded-portal border border-portal-line bg-white px-3 py-2">
+                          <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-portal-blue">
+                            <FileText className="h-4 w-4" aria-hidden="true" />
+                            View JD
+                          </summary>
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-portal-muted">{application.job_description}</p>
+                          {application.selection_process ? (
+                            <p className="mt-3 whitespace-pre-wrap border-t border-portal-line pt-3 text-sm leading-6 text-portal-muted">{application.selection_process}</p>
+                          ) : null}
+                        </details>
+                      ) : (
+                        <span className="text-sm text-portal-muted">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-portal-muted">{application.resume_file_name}</td>
                     <td className="px-4 py-4 text-portal-muted">{formatDate(application.applied_at)}</td>
                     <td className="px-4 py-4"><StudentStatus status={application.resume_shortlist_status} /></td>
