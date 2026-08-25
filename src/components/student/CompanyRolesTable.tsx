@@ -34,6 +34,10 @@ function isDeadlinePassed(value: string | null) {
   return Boolean(value && new Date(value) < new Date());
 }
 
+function firstUrl(value: string | null) {
+  return value?.match(/https?:\/\/\S+/)?.[0] ?? null;
+}
+
 function ActionMessage({ state }: { state: StudentActionState }) {
   if (state.error) {
     return <p className="mt-4 rounded-portal border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>;
@@ -175,6 +179,7 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
                 const deadlinePassed = isDeadlinePassed(role.deadline);
                 const roleClosed = role.status !== "open";
                 const registrationDisabled = roleClosed || deadlinePassed;
+                const externalFormUrl = firstUrl(role.selection_process);
 
                 return (
                   <tr className="align-top" key={role.id}>
@@ -204,6 +209,17 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
                           Details
                         </button>
                       )}
+                      {externalFormUrl ? (
+                        <a
+                          className="mt-2 inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+                          href={externalFormUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          External Form
+                        </a>
+                      ) : null}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-2">
@@ -276,6 +292,18 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
 
               {modal.mode === "details" ? (
                 <>
+                  {firstUrl(selectedRole.selection_process) ? (
+                    <a
+                      className="inline-flex h-10 items-center gap-2 rounded-portal border border-portal-line px-4 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+                      href={firstUrl(selectedRole.selection_process) ?? undefined}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                      Fill External Form
+                    </a>
+                  ) : null}
+
                   {selectedRole.jd_signed_url ? (
                     <a
                       className="inline-flex h-10 items-center gap-2 rounded-portal border border-portal-line px-4 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"

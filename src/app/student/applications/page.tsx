@@ -35,6 +35,10 @@ function TestAttendedStatus({ value }: { value: boolean | null }) {
   );
 }
 
+function firstUrl(value: string | null) {
+  return value?.match(/https?:\/\/\S+/)?.[0] ?? null;
+}
+
 export default async function StudentApplicationsPage() {
   const { profile, student } = await requireStudent();
   const applications = await getStudentApplications(student.id);
@@ -70,45 +74,61 @@ export default async function StudentApplicationsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-portal-line">
-                {applications.map((application) => (
-                  <tr key={application.id}>
-                    <td className="px-4 py-4 font-semibold text-portal-ink">{application.company_name}</td>
-                    <td className="px-4 py-4 text-portal-muted">{application.role_title}</td>
-                    <td className="px-4 py-4">
-                      {application.jd_signed_url ? (
-                        <a
-                          className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
-                          href={application.jd_signed_url}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                          View JD
-                        </a>
-                      ) : application.job_description ? (
-                        <details className="max-w-xs rounded-portal border border-portal-line bg-white px-3 py-2">
-                          <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-portal-blue">
-                            <FileText className="h-4 w-4" aria-hidden="true" />
-                            View JD
-                          </summary>
-                          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-portal-muted">{application.job_description}</p>
-                          {application.selection_process ? (
-                            <p className="mt-3 whitespace-pre-wrap border-t border-portal-line pt-3 text-sm leading-6 text-portal-muted">{application.selection_process}</p>
+                {applications.map((application) => {
+                  const externalFormUrl = firstUrl(application.selection_process);
+
+                  return (
+                    <tr key={application.id}>
+                      <td className="px-4 py-4 font-semibold text-portal-ink">{application.company_name}</td>
+                      <td className="px-4 py-4 text-portal-muted">{application.role_title}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {application.jd_signed_url ? (
+                            <a
+                              className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+                              href={application.jd_signed_url}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                              View JD
+                            </a>
+                          ) : application.job_description ? (
+                            <details className="max-w-xs rounded-portal border border-portal-line bg-white px-3 py-2">
+                              <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-portal-blue">
+                                <FileText className="h-4 w-4" aria-hidden="true" />
+                                View JD
+                              </summary>
+                              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-portal-muted">{application.job_description}</p>
+                              {application.selection_process ? (
+                                <p className="mt-3 whitespace-pre-wrap border-t border-portal-line pt-3 text-sm leading-6 text-portal-muted">{application.selection_process}</p>
+                              ) : null}
+                            </details>
                           ) : null}
-                        </details>
-                      ) : (
-                        <span className="text-sm text-portal-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-portal-muted">{application.resume_file_name}</td>
-                    <td className="px-4 py-4 text-portal-muted">{formatDate(application.applied_at)}</td>
-                    <td className="px-4 py-4"><StudentStatus status={application.resume_shortlist_status} /></td>
-                    <td className="px-4 py-4"><TestAttendedStatus value={application.test_attended} /></td>
-                    <td className="px-4 py-4"><StudentStatus status={application.test_status} /></td>
-                    <td className="px-4 py-4"><StudentStatus status={application.gd_status} /></td>
-                    <td className="px-4 py-4"><StudentStatus status={application.offer_status} /></td>
-                  </tr>
-                ))}
+                          {externalFormUrl ? (
+                            <a
+                              className="inline-flex h-9 items-center gap-2 rounded-portal border border-portal-line px-3 text-sm font-semibold text-portal-blue transition hover:bg-portal-sky"
+                              href={externalFormUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                              External Form
+                            </a>
+                          ) : null}
+                          {!application.jd_signed_url && !application.job_description && !externalFormUrl ? <span className="text-sm text-portal-muted">-</span> : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-portal-muted">{application.resume_file_name}</td>
+                      <td className="px-4 py-4 text-portal-muted">{formatDate(application.applied_at)}</td>
+                      <td className="px-4 py-4"><StudentStatus status={application.resume_shortlist_status} /></td>
+                      <td className="px-4 py-4"><TestAttendedStatus value={application.test_attended} /></td>
+                      <td className="px-4 py-4"><StudentStatus status={application.test_status} /></td>
+                      <td className="px-4 py-4"><StudentStatus status={application.gd_status} /></td>
+                      <td className="px-4 py-4"><StudentStatus status={application.offer_status} /></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
