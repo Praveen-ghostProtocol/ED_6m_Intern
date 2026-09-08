@@ -32,6 +32,7 @@ export type StudentRecord = {
   branch_specialisation: string | null;
   profile_completed_at: string | null;
   has_offer: boolean;
+  application_locked: boolean;
 };
 
 export type StudentResume = {

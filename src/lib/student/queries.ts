@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isStudentApplicationLockedByRoll } from "@/lib/students/application-locks";
 import type {
   CompanyRole,
   MasterResumeEntry,
@@ -32,7 +33,8 @@ export async function getStudentByProfileId(profileId: string): Promise<StudentR
 
   return {
     ...data,
-    has_offer: (count ?? 0) > 0
+    has_offer: (count ?? 0) > 0,
+    application_locked: isStudentApplicationLockedByRoll(data.roll_number) || (count ?? 0) > 0
   } as StudentRecord;
 }
 

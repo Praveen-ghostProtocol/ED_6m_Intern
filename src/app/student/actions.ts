@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudent } from "@/lib/student/guards";
+import { isStudentApplicationLockedByRoll } from "@/lib/students/application-locks";
 import {
   branchSpecialisations,
   genderOptions
@@ -77,6 +78,17 @@ async function studentHasOffer(studentId: string) {
     .eq("offer_status", "offer_given");
 
   return (count ?? 0) > 0;
+}
+
+async function studentApplicationAccessLocked(studentId: string) {
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("roll_number")
+    .eq("id", studentId)
+    .single();
+
+  return isStudentApplicationLockedByRoll(student?.roll_number as string | undefined) || (await studentHasOffer(studentId));
 }
 
 async function getOpenRole(roleId: string) {
@@ -365,8 +377,8 @@ export async function applyToRole(
     return { error: "Choose a valid role and verified resume." };
   }
 
-  if (await studentHasOffer(studentId)) {
-    return { error: "Application access is closed because you have already received an offer." };
+  if (await studentApplicationAccessLocked(studentId)) {
+    return { error: "Application access is closed for your account. You can still view companies and JDs." };
   }
 
   const [resumeIsVerified, role] = await Promise.all([
@@ -426,8 +438,8 @@ export async function updateApplicationResume(
     return { error: "Choose a valid application and verified resume." };
   }
 
-  if (await studentHasOffer(studentId)) {
-    return { error: "Application access is closed because you have already received an offer." };
+  if (await studentApplicationAccessLocked(studentId)) {
+    return { error: "Application access is closed for your account. You can still view companies and JDs." };
   }
 
   const supabase = await createClient();
@@ -493,8 +505,8 @@ export async function removeApplication(
     return { error: "Choose a valid application." };
   }
 
-  if (await studentHasOffer(studentId)) {
-    return { error: "Application access is closed because you have already received an offer." };
+  if (await studentApplicationAccessLocked(studentId)) {
+    return { error: "Application access is closed for your account. You can still view companies and JDs." };
   }
 
   const supabase = await createClient();

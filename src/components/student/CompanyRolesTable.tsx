@@ -103,7 +103,7 @@ function RegistrationForm({ applicationsLocked, role, verifiedResumes }: { appli
           {roleClosed
             ? "This role is closed. The JD remains visible, but registration changes are no longer available."
             : applicationsLocked
-            ? "Your application access is closed because you have already received an offer. You can still view company details and JDs."
+            ? "Application access is closed for your account. You can still view company details and JDs."
             : deadlinePassed
             ? "The deadline has passed. This registration can no longer be changed."
             : verifiedResumes.length === 0
