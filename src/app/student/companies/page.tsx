@@ -31,7 +31,7 @@ export default async function StudentCompaniesPage() {
           title="No open roles yet"
         />
       ) : (
-        <CompanyRolesTable roles={roles} verifiedResumes={verifiedResumes} />
+        <CompanyRolesTable applicationsLocked={student.has_offer} roles={roles} verifiedResumes={verifiedResumes} />
       )}
     </PortalShell>
   );

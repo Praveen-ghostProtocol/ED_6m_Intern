@@ -24,7 +24,16 @@ export async function getStudentByProfileId(profileId: string): Promise<StudentR
     return null;
   }
 
-  return data as StudentRecord;
+  const { count } = await supabase
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("student_id", data.id)
+    .eq("offer_status", "offer_given");
+
+  return {
+    ...data,
+    has_offer: (count ?? 0) > 0
+  } as StudentRecord;
 }
 
 export async function getStudentResumes(studentId: string): Promise<StudentResume[]> {

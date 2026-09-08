@@ -68,6 +68,17 @@ async function validateVerifiedResume(studentId: string, resumeId: string) {
   return Boolean(resume && resume.status === "verified");
 }
 
+async function studentHasOffer(studentId: string) {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("student_id", studentId)
+    .eq("offer_status", "offer_given");
+
+  return (count ?? 0) > 0;
+}
+
 async function getOpenRole(roleId: string) {
   const supabase = await createClient();
   const { data: role } = await supabase
@@ -354,6 +365,10 @@ export async function applyToRole(
     return { error: "Choose a valid role and verified resume." };
   }
 
+  if (await studentHasOffer(studentId)) {
+    return { error: "Application access is closed because you have already received an offer." };
+  }
+
   const [resumeIsVerified, role] = await Promise.all([
     validateVerifiedResume(studentId, resumeResult.data),
     getOpenRole(roleResult.data)
@@ -409,6 +424,10 @@ export async function updateApplicationResume(
 
   if (!applicationResult.success || !resumeResult.success) {
     return { error: "Choose a valid application and verified resume." };
+  }
+
+  if (await studentHasOffer(studentId)) {
+    return { error: "Application access is closed because you have already received an offer." };
   }
 
   const supabase = await createClient();
@@ -472,6 +491,10 @@ export async function removeApplication(
 
   if (!applicationResult.success) {
     return { error: "Choose a valid application." };
+  }
+
+  if (await studentHasOffer(studentId)) {
+    return { error: "Application access is closed because you have already received an offer." };
   }
 
   const supabase = await createClient();

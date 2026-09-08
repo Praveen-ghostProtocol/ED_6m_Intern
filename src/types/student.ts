@@ -31,6 +31,7 @@ export type StudentRecord = {
   branch: string;
   branch_specialisation: string | null;
   profile_completed_at: string | null;
+  has_offer: boolean;
 };
 
 export type StudentResume = {

@@ -14,6 +14,7 @@ import type { CompanyRole, VerifiedResumeChoice } from "@/types/student";
 type CompanyRolesTableProps = {
   roles: CompanyRole[];
   verifiedResumes: VerifiedResumeChoice[];
+  applicationsLocked?: boolean;
 };
 
 type ModalMode = "details" | "register";
@@ -68,12 +69,12 @@ function SubmitButton({ disabled, icon, label, pendingLabel, tone = "teal" }: { 
   );
 }
 
-function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifiedResumes: VerifiedResumeChoice[] }) {
+function RegistrationForm({ applicationsLocked, role, verifiedResumes }: { applicationsLocked?: boolean; role: CompanyRole; verifiedResumes: VerifiedResumeChoice[] }) {
   const action = role.has_applied ? updateApplicationResume : applyToRole;
   const [state, formAction] = useActionState<StudentActionState, FormData>(action, {});
   const deadlinePassed = isDeadlinePassed(role.deadline);
   const roleClosed = role.status !== "open";
-  const disabled = roleClosed || deadlinePassed || verifiedResumes.length === 0;
+  const disabled = applicationsLocked || roleClosed || deadlinePassed || verifiedResumes.length === 0;
 
   return (
     <form action={formAction} className="rounded-portal border border-portal-line bg-portal-canvas p-4">
@@ -101,6 +102,8 @@ function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifi
         <p className="text-sm text-portal-muted">
           {roleClosed
             ? "This role is closed. The JD remains visible, but registration changes are no longer available."
+            : applicationsLocked
+            ? "Your application access is closed because you have already received an offer. You can still view company details and JDs."
             : deadlinePassed
             ? "The deadline has passed. This registration can no longer be changed."
             : verifiedResumes.length === 0
@@ -122,7 +125,7 @@ function RegistrationForm({ role, verifiedResumes }: { role: CompanyRole; verifi
   );
 }
 
-function RemoveRegistrationForm({ role }: { role: CompanyRole }) {
+function RemoveRegistrationForm({ applicationsLocked, role }: { applicationsLocked?: boolean; role: CompanyRole }) {
   const [state, formAction] = useActionState<StudentActionState, FormData>(removeApplication, {});
   const deadlinePassed = isDeadlinePassed(role.deadline);
   const roleClosed = role.status !== "open";
@@ -139,7 +142,7 @@ function RemoveRegistrationForm({ role }: { role: CompanyRole }) {
           Remove this registration before the deadline. You can register again later while the role is still open.
         </p>
         <SubmitButton
-          disabled={roleClosed || deadlinePassed}
+          disabled={applicationsLocked || roleClosed || deadlinePassed}
           icon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
           label="Remove"
           pendingLabel="Removing"
@@ -151,7 +154,7 @@ function RemoveRegistrationForm({ role }: { role: CompanyRole }) {
   );
 }
 
-export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableProps) {
+export function CompanyRolesTable({ applicationsLocked = false, roles, verifiedResumes }: CompanyRolesTableProps) {
   const [modal, setModal] = useState<{ mode: ModalMode; roleId: string } | null>(null);
   const selectedRole = useMemo(
     () => roles.find((role) => role.id === modal?.roleId) ?? null,
@@ -178,7 +181,7 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
               {roles.map((role) => {
                 const deadlinePassed = isDeadlinePassed(role.deadline);
                 const roleClosed = role.status !== "open";
-                const registrationDisabled = roleClosed || deadlinePassed;
+                const registrationDisabled = applicationsLocked || roleClosed || deadlinePassed;
                 const externalFormUrl = firstUrl(role.selection_process);
 
                 return (
@@ -339,8 +342,8 @@ export function CompanyRolesTable({ roles, verifiedResumes }: CompanyRolesTableP
                 </>
               ) : (
                 <div className="space-y-4">
-                  <RegistrationForm role={selectedRole} verifiedResumes={verifiedResumes} />
-                  <RemoveRegistrationForm role={selectedRole} />
+                  <RegistrationForm applicationsLocked={applicationsLocked} role={selectedRole} verifiedResumes={verifiedResumes} />
+                  <RemoveRegistrationForm applicationsLocked={applicationsLocked} role={selectedRole} />
                 </div>
               )}
             </div>
