@@ -165,13 +165,14 @@ export function CompanyRolesTable({ applicationsLocked = false, roles, verifiedR
     <>
       <div className="overflow-hidden rounded-portal border border-portal-line bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1020px] border-collapse text-left text-sm">
             <thead className="bg-portal-sky text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 font-semibold">Company</th>
                 <th className="px-4 py-3 font-semibold">Role</th>
                 <th className="px-4 py-3 font-semibold">Location</th>
                 <th className="px-4 py-3 font-semibold">Duration</th>
+                <th className="px-4 py-3 font-semibold">Stipend (₹k/month)</th>
                 <th className="px-4 py-3 font-semibold">Deadline</th>
                 <th className="px-4 py-3 font-semibold">JD</th>
                 <th className="px-4 py-3 font-semibold">Register</th>
@@ -190,6 +191,7 @@ export function CompanyRolesTable({ applicationsLocked = false, roles, verifiedR
                     <td className="px-4 py-4 text-portal-muted">{role.title}</td>
                     <td className="px-4 py-4 text-portal-muted">{role.location ?? "Not specified"}</td>
                     <td className="px-4 py-4 text-portal-muted">{role.duration ?? "Not specified"}</td>
+                    <td className="px-4 py-4 font-semibold text-portal-muted">{role.stipend_band}</td>
                     <td className="px-4 py-4 text-portal-muted">{formatDate(role.deadline)}</td>
                     <td className="px-4 py-4">
                       {role.jd_signed_url ? (
@@ -275,7 +277,7 @@ export function CompanyRolesTable({ applicationsLocked = false, roles, verifiedR
             </header>
 
             <div className="space-y-5 px-5 py-5">
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-4">
                 <div className="rounded-portal border border-portal-line p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Duration</p>
                   <p className="mt-1 text-sm">{selectedRole.duration ?? "Not specified"}</p>
@@ -286,6 +288,10 @@ export function CompanyRolesTable({ applicationsLocked = false, roles, verifiedR
                     <MapPin className="h-4 w-4 text-portal-teal" aria-hidden="true" />
                     {selectedRole.location ?? "Not specified"}
                   </p>
+                </div>
+                <div className="rounded-portal border border-portal-line p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Stipend (₹k/month)</p>
+                  <p className="mt-1 text-sm font-semibold">{selectedRole.stipend_band}</p>
                 </div>
                 <div className="rounded-portal border border-portal-line p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-portal-muted">Deadline</p>

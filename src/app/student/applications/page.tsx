@@ -58,11 +58,12 @@ export default async function StudentApplicationsPage() {
       ) : (
         <div className="overflow-hidden rounded-portal border border-portal-line bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
               <thead className="bg-portal-sky text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Company</th>
                   <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Stipend (₹k/month)</th>
                   <th className="px-4 py-3 font-semibold">JD</th>
                   <th className="px-4 py-3 font-semibold">Resume Used</th>
                   <th className="px-4 py-3 font-semibold">Applied</th>
@@ -81,6 +82,7 @@ export default async function StudentApplicationsPage() {
                     <tr key={application.id}>
                       <td className="px-4 py-4 font-semibold text-portal-ink">{application.company_name}</td>
                       <td className="px-4 py-4 text-portal-muted">{application.role_title}</td>
+                      <td className="px-4 py-4 font-semibold text-portal-muted">{application.stipend_band}</td>
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-2">
                           {application.jd_signed_url ? (

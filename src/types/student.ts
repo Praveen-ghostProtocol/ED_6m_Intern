@@ -74,6 +74,7 @@ export type CompanyRole = {
   title: string;
   status: "open" | "closed";
   duration: string | null;
+  stipend_band: "0-20" | "20-40" | "40+" | "Not specified";
   location: string | null;
   eligibility: string | null;
   job_description: string;
@@ -98,6 +99,7 @@ export type StudentApplication = {
   offer_status: ApplicationStatus;
   role_title: string;
   company_name: string;
+  stipend_band: "0-20" | "20-40" | "40+" | "Not specified";
   resume_file_name: string;
   job_description: string | null;
   jd_file_name: string | null;

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isStudentApplicationLockedByRoll } from "@/lib/students/application-locks";
+import { getStudentStipendBand } from "@/lib/student/stipend-band";
 import type {
   CompanyRole,
   MasterResumeEntry,
@@ -91,7 +92,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
     supabase
       .from("internship_roles")
       .select(
-        "id,company_id,title,status,duration,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,gd_applicable,deadline,companies(name)"
+        "id,company_id,title,status,duration,stipend,location,eligibility,job_description,jd_file_name,jd_storage_path,selection_process,gd_applicable,deadline,companies(name)"
       )
       .in("status", ["open", "closed"])
       .order("deadline", { ascending: true, nullsFirst: false }),
@@ -127,6 +128,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
         title: role.title as string,
         status: role.status as CompanyRole["status"],
         duration: (role.duration as string | null) ?? null,
+        stipend_band: getStudentStipendBand(role.stipend as string | null),
         location: (role.location as string | null) ?? null,
         eligibility: (role.eligibility as string | null) ?? null,
         job_description: role.job_description as string,
@@ -149,7 +151,7 @@ export async function getStudentApplications(studentId: string): Promise<Student
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,internship_roles(title,job_description,jd_file_name,jd_storage_path,selection_process,companies(name)),resumes(file_name)"
+      "id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,internship_roles(title,stipend,job_description,jd_file_name,jd_storage_path,selection_process,companies(name)),resumes(file_name)"
     )
     .eq("student_id", studentId)
     .order("applied_at", { ascending: false });
@@ -177,6 +179,7 @@ export async function getStudentApplications(studentId: string): Promise<Student
       offer_status: application.offer_status,
       role_title: (role?.title as string | undefined) ?? "Role",
       company_name: (company?.name as string | undefined) ?? "Company",
+      stipend_band: getStudentStipendBand(role?.stipend as string | null | undefined),
       resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
       job_description: (role?.job_description as string | null | undefined) ?? null,
       jd_file_name: (role?.jd_file_name as string | null | undefined) ?? null,
