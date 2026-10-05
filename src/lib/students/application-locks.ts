@@ -25,6 +25,7 @@ const lockedStudentRollNumbers = new Set([
   "ed23b056",
   "ed23b060",
   "ed23b061",
+  "ed23b062",
   "ed23b063",
   "ed23b065",
   "ed23b067",
