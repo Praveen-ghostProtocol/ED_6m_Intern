@@ -98,17 +98,18 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
       .order("deadline", { ascending: true, nullsFirst: false }),
     supabase
       .from("applications")
-      .select("id,role_id,resume_id,resumes(file_name)")
+      .select("id,role_id,resume_id,active_backlog,resumes(file_name)")
       .eq("student_id", studentId)
   ]);
 
-  const applicationByRole = new Map<string, { id: string; resume_id: string; resume_file_name: string | null }>();
+  const applicationByRole = new Map<string, { id: string; resume_id: string; resume_file_name: string | null; active_backlog: boolean | null }>();
   (applications ?? []).forEach((application) => {
     const resume = one(application.resumes) as Record<string, unknown> | null;
     applicationByRole.set(application.role_id as string, {
       id: application.id as string,
       resume_id: application.resume_id as string,
-      resume_file_name: (resume?.file_name as string | undefined) ?? null
+      resume_file_name: (resume?.file_name as string | undefined) ?? null,
+      active_backlog: (application.active_backlog as boolean | null) ?? null
     });
   });
 
@@ -140,6 +141,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
         application_id: application?.id ?? null,
         application_resume_id: application?.resume_id ?? null,
         application_resume_file_name: application?.resume_file_name ?? null,
+        application_active_backlog: application?.active_backlog ?? null,
         has_applied: Boolean(application)
       };
     })

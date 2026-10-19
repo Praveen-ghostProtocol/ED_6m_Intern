@@ -9,6 +9,7 @@ import {
   updateApplicationResume,
   type StudentActionState
 } from "@/app/student/actions";
+import { isSiemensHealthineers } from "@/lib/companies";
 import type { CompanyRole, VerifiedResumeChoice } from "@/types/student";
 
 type CompanyRolesTableProps = {
@@ -75,6 +76,7 @@ function RegistrationForm({ applicationsLocked, role, verifiedResumes }: { appli
   const deadlinePassed = isDeadlinePassed(role.deadline);
   const roleClosed = role.status !== "open";
   const disabled = applicationsLocked || roleClosed || deadlinePassed || verifiedResumes.length === 0;
+  const requiresActiveBacklog = isSiemensHealthineers(role.company_name);
 
   return (
     <form action={formAction} className="rounded-portal border border-portal-line bg-portal-canvas p-4">
@@ -98,6 +100,23 @@ function RegistrationForm({ applicationsLocked, role, verifiedResumes }: { appli
         </select>
       </label>
 
+      {requiresActiveBacklog ? (
+        <label className="mt-4 flex flex-col gap-2 text-sm font-medium text-portal-ink">
+          Active backlog
+          <select
+            className="h-10 rounded-portal border border-portal-line bg-white px-3 text-sm outline-none transition focus:border-portal-teal focus:ring-2 focus:ring-portal-mint"
+            defaultValue={role.application_active_backlog === null ? "" : role.application_active_backlog ? "yes" : "no"}
+            disabled={disabled}
+            name="activeBacklog"
+            required
+          >
+            <option value="">Select Yes or No</option>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
+      ) : null}
+
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <p className="text-sm text-portal-muted">
           {roleClosed
@@ -115,7 +134,7 @@ function RegistrationForm({ applicationsLocked, role, verifiedResumes }: { appli
         <SubmitButton
           disabled={disabled}
           icon={role.has_applied ? <RefreshCw className="h-4 w-4" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-          label={role.has_applied ? "Update resume" : "Register"}
+          label={role.has_applied ? "Update application" : "Register"}
           pendingLabel={role.has_applied ? "Updating" : "Registering"}
         />
       </div>

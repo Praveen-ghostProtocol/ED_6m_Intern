@@ -86,6 +86,7 @@ export type CompanyRole = {
   application_id: string | null;
   application_resume_id: string | null;
   application_resume_file_name: string | null;
+  application_active_backlog: boolean | null;
   has_applied: boolean;
 };
 

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { isSiemensHealthineers } from "@/lib/companies";
 import { requireStudent } from "@/lib/student/guards";
 import { isStudentApplicationLockedByRoll } from "@/lib/students/application-locks";
 import {
@@ -95,11 +96,25 @@ async function getOpenRole(roleId: string) {
   const supabase = await createClient();
   const { data: role } = await supabase
     .from("internship_roles")
-    .select("id,status,deadline,gd_applicable")
+    .select("id,status,deadline,gd_applicable,companies(name)")
     .eq("id", roleId)
     .single();
 
   return role;
+}
+
+function companyNameForRole(role: { companies: { name: string } | { name: string }[] | null }) {
+  const company = Array.isArray(role.companies) ? role.companies[0] : role.companies;
+  return company?.name ?? null;
+}
+
+function parseActiveBacklog(formData: FormData, required: boolean) {
+  if (!required) return { valid: true, value: null } as const;
+
+  const parsed = z.enum(["yes", "no"]).safeParse(formText(formData, "activeBacklog"));
+  if (!parsed.success) return { valid: false, value: null } as const;
+
+  return { valid: true, value: parsed.data === "yes" } as const;
 }
 
 function revalidateStudentApplicationPaths() {
@@ -398,11 +413,18 @@ export async function applyToRole(
     return { error: "The application deadline has passed." };
   }
 
+  const requiresActiveBacklog = isSiemensHealthineers(companyNameForRole(role));
+  const activeBacklog = parseActiveBacklog(formData, requiresActiveBacklog);
+  if (!activeBacklog.valid) {
+    return { error: "Select whether you have an active backlog." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("applications").insert({
     student_id: studentId,
     role_id: roleResult.data,
     resume_id: resumeResult.data,
+    active_backlog: activeBacklog.value,
     gd_status: role.gd_applicable ? "pending" : "not_applicable"
   });
 
@@ -445,7 +467,7 @@ export async function updateApplicationResume(
   const supabase = await createClient();
   const { data: application } = await supabase
     .from("applications")
-    .select("id,student_id,role_id,internship_roles(status,deadline)")
+    .select("id,student_id,role_id,internship_roles(status,deadline,companies(name))")
     .eq("id", applicationResult.data)
     .eq("student_id", studentId)
     .single();
@@ -466,6 +488,12 @@ export async function updateApplicationResume(
     return { error: "The application deadline has passed." };
   }
 
+  const requiresActiveBacklog = isSiemensHealthineers(companyNameForRole(role));
+  const activeBacklog = parseActiveBacklog(formData, requiresActiveBacklog);
+  if (!activeBacklog.valid) {
+    return { error: "Select whether you have an active backlog." };
+  }
+
   const resumeIsVerified = await validateVerifiedResume(studentId, resumeResult.data);
 
   if (!resumeIsVerified) {
@@ -474,7 +502,7 @@ export async function updateApplicationResume(
 
   const { error } = await supabase
     .from("applications")
-    .update({ resume_id: resumeResult.data })
+    .update({ resume_id: resumeResult.data, active_backlog: activeBacklog.value })
     .eq("id", applicationResult.data)
     .eq("student_id", studentId);
 
@@ -483,7 +511,7 @@ export async function updateApplicationResume(
   }
 
   revalidateStudentApplicationPaths();
-  return { success: "Registered resume updated." };
+  return { success: "Application details updated." };
 }
 
 export async function removeApplication(

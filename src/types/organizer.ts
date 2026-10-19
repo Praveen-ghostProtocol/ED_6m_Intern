@@ -69,6 +69,7 @@ export type OrganizerApplication = {
   student_personal_email: string | null;
   student_name: string | null;
   student_cgpa: number | null;
+  student_phone: string | null;
   student_branch_specialisation: string | null;
   role_id: string;
   company_name: string;
@@ -78,6 +79,7 @@ export type OrganizerApplication = {
   resume_share_path: string | null;
   applied_at: string;
   gd_applicable: boolean;
+  active_backlog: boolean | null;
   resume_shortlist_status: ApplicationStatus;
   test_attended: boolean | null;
   test_status: ApplicationStatus;

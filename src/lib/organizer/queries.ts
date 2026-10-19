@@ -235,7 +235,7 @@ export async function getAllApplicationsForOrganizer(options: { includeShareLink
 
   const { data } = await supabase
     .from("applications")
-    .select("id,resume_id,role_id,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,alternate_email,branch_specialisation,profiles(email,full_name,is_active)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
+    .select("id,resume_id,role_id,active_backlog,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,phone,alternate_email,branch_specialisation,profiles(email,full_name,is_active)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
     .in("student_id", activeStudentIds)
     .order("applied_at", { ascending: false });
 
@@ -262,6 +262,7 @@ export async function getAllApplicationsForOrganizer(options: { includeShareLink
         student_personal_email: (student?.alternate_email as string | null | undefined) ?? null,
         student_name: (profile?.full_name as string | null | undefined) ?? null,
         student_cgpa: (student?.cgpa as number | null | undefined) ?? null,
+        student_phone: (student?.phone as string | null | undefined) ?? null,
         student_branch_specialisation: (student?.branch_specialisation as string | null | undefined) ?? null,
         role_id: application.role_id as string,
         company_name: (company?.name as string | undefined) ?? "Company",
@@ -271,6 +272,7 @@ export async function getAllApplicationsForOrganizer(options: { includeShareLink
         resume_share_path: sharePath,
         applied_at: application.applied_at as string,
         gd_applicable: Boolean(role?.gd_applicable),
+        active_backlog: (application.active_backlog as boolean | null) ?? null,
         resume_shortlist_status: application.resume_shortlist_status as OrganizerApplication["resume_shortlist_status"],
         test_attended: (application.test_attended as boolean | null) ?? null,
         test_status: application.test_status as OrganizerApplication["test_status"],

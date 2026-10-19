@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import { isSiemensHealthineers } from "@/lib/companies";
 import type { OrganizerApplication, OrganizerRole } from "@/types/organizer";
 
 function csvValue(value: string | number | boolean | null | undefined) {
@@ -21,6 +22,18 @@ function absoluteShareUrl(path: string | null) {
 
 function resumeViewUrl(application: OrganizerApplication) {
   return application.resume_signed_url ?? application.resume_share_path;
+}
+
+function personalEmail(value: string | null) {
+  if (!value) return "";
+  return /@(?:[a-z0-9-]+\.)*iitm\.ac\.in$/i.test(value.trim()) ? "" : value.trim();
+}
+
+function degreeFromRollNumber(rollNumber: string) {
+  const programmeCode = rollNumber.trim().toUpperCase().match(/^[A-Z]{2}\d{2}([A-Z])/)?.[1];
+  if (programmeCode === "B") return "B.Tech";
+  if (programmeCode === "M") return "M.Tech";
+  return "";
 }
 
 export function ApplicationCsvExport({ applications, role }: { applications: OrganizerApplication[]; role: OrganizerRole }) {
@@ -45,43 +58,64 @@ export function ApplicationCsvExport({ applications, role }: { applications: Org
   }
 
   function exportCsv() {
-    const headers = [
-      "Company",
-      "Role",
-      "Student Name",
-      "Roll Number",
-      "Email",
-      "Personal Email",
-      "CGPA",
-      "Specialisation",
-      "Resume",
-      "Resume Link",
-      "Applied At",
-      "Resume Shortlist",
-      "Test Attended",
-      "Test Shortlist",
-      "GD Shortlist",
-      "Offer Status"
-    ];
+    const isSiemens = isSiemensHealthineers(role.company_name);
+    const headers = isSiemens
+      ? [
+          "Candidate Full Name",
+          "Personal Mail ID - Mail IDs with college domain ID will not be accepted",
+          "Contact Number",
+          "Degree - B.E/B.Tech/M.Tech",
+          "Specilization",
+          "Active backlog - Yes/No",
+          "Resume link"
+        ]
+      : [
+          "Company",
+          "Role",
+          "Student Name",
+          "Roll Number",
+          "Email",
+          "Personal Email",
+          "CGPA",
+          "Specialisation",
+          "Resume",
+          "Resume Link",
+          "Applied At",
+          "Resume Shortlist",
+          "Test Attended",
+          "Test Shortlist",
+          "GD Shortlist",
+          "Offer Status"
+        ];
 
-    const rows = selectedApplications.map((application) => [
-      application.company_name,
-      application.role_title,
-      application.student_name ?? "",
-      application.student_roll_number,
-      application.student_email,
-      application.student_personal_email ?? "",
-      application.student_cgpa ?? "",
-      application.student_branch_specialisation ?? "",
-      application.resume_file_name,
-      absoluteShareUrl(application.resume_share_path),
-      new Date(application.applied_at).toLocaleString("en-IN"),
-      statusText(application.resume_shortlist_status),
-      application.test_attended === null ? "" : application.test_attended ? "Yes" : "No",
-      statusText(application.test_status),
-      statusText(application.gd_status),
-      statusText(application.offer_status)
-    ]);
+    const rows = isSiemens
+      ? selectedApplications.map((application) => [
+          application.student_name ?? "",
+          personalEmail(application.student_personal_email),
+          application.student_phone ?? "",
+          degreeFromRollNumber(application.student_roll_number),
+          application.student_branch_specialisation ?? "",
+          application.active_backlog === null ? "" : application.active_backlog ? "Yes" : "No",
+          absoluteShareUrl(application.resume_share_path)
+        ])
+      : selectedApplications.map((application) => [
+          application.company_name,
+          application.role_title,
+          application.student_name ?? "",
+          application.student_roll_number,
+          application.student_email,
+          application.student_personal_email ?? "",
+          application.student_cgpa ?? "",
+          application.student_branch_specialisation ?? "",
+          application.resume_file_name,
+          absoluteShareUrl(application.resume_share_path),
+          new Date(application.applied_at).toLocaleString("en-IN"),
+          statusText(application.resume_shortlist_status),
+          application.test_attended === null ? "" : application.test_attended ? "Yes" : "No",
+          statusText(application.test_status),
+          statusText(application.gd_status),
+          statusText(application.offer_status)
+        ]);
 
     const csv = [headers, ...rows].map((row) => row.map(csvValue).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
