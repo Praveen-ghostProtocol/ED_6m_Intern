@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { getSignedUrlMap } from "@/lib/supabase/signed-urls";
 import { embeddedProfileIsActive, embeddedStudentIsActive, getActiveStudentIds } from "@/lib/students/active";
 import type {
   OrganizerApplication,
@@ -193,20 +194,19 @@ export async function getCompaniesForOrganizer(): Promise<OrganizerCompany[]> {
   }));
 }
 
-export async function getRolesForOrganizer(): Promise<OrganizerRole[]> {
+export async function getRolesForOrganizer(options: { includeJdLinks?: boolean } = {}): Promise<OrganizerRole[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("internship_roles")
     .select("id,company_id,title,duration,stipend,location,jd_file_name,jd_storage_path,deadline,gd_applicable,status,companies(name)")
     .order("created_at", { ascending: false });
 
-  return Promise.all(
-    (data ?? []).map(async (role) => {
+  const signedUrls = options.includeJdLinks === false
+    ? new Map<string, string>()
+    : await getSignedUrlMap(supabase, "job-descriptions", (data ?? []).map((role) => role.jd_storage_path as string | null));
+  return (data ?? []).map((role) => {
       const company = one(role.companies) as Record<string, unknown> | null;
       const jdStoragePath = role.jd_storage_path as string | null;
-      const signed = jdStoragePath
-        ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
-        : { data: null };
 
       return {
         id: role.id as string,
@@ -217,28 +217,34 @@ export async function getRolesForOrganizer(): Promise<OrganizerRole[]> {
         stipend: (role.stipend as string | null) ?? null,
         location: (role.location as string | null) ?? null,
         jd_file_name: (role.jd_file_name as string | null) ?? null,
-        jd_signed_url: signed.data?.signedUrl ?? null,
+        jd_signed_url: jdStoragePath ? signedUrls.get(jdStoragePath) ?? null : null,
         deadline: (role.deadline as string | null) ?? null,
         gd_applicable: Boolean(role.gd_applicable),
         status: role.status as OrganizerRole["status"]
       };
-    })
-  );
+    });
 }
 
-export async function getAllApplicationsForOrganizer(options: { includeShareLinks?: boolean } = {}): Promise<OrganizerApplication[]> {
+export async function getAllApplicationsForOrganizer(options: { includeShareLinks?: boolean; includeResumeLinks?: boolean; roleId?: string } = {}): Promise<OrganizerApplication[]> {
   const supabase = await createClient();
   const includeShareLinks = options.includeShareLinks === true;
   const activeStudentIds = await getActiveStudentIds(supabase);
 
   if (activeStudentIds.length === 0) return [];
 
-  const { data } = await supabase
+  let query = supabase
     .from("applications")
     .select("id,resume_id,role_id,active_backlog,applied_at,resume_shortlist_status,test_attended,test_status,gd_status,offer_status,students(roll_number,cgpa,phone,alternate_email,branch_specialisation,profiles(email,full_name,is_active)),internship_roles(title,gd_applicable,companies(name)),resumes(id,file_name,storage_path)")
-    .in("student_id", activeStudentIds)
-    .order("applied_at", { ascending: false });
+    .in("student_id", activeStudentIds);
+  if (options.roleId) query = query.eq("role_id", options.roleId);
+  const { data } = await query.order("applied_at", { ascending: false });
 
+  const signedUrls = options.includeResumeLinks === false
+    ? new Map<string, string>()
+    : await getSignedUrlMap(supabase, "resumes", (data ?? []).map((application) => {
+      const resume = one(application.resumes) as Record<string, unknown> | null;
+      return resume?.storage_path as string | null | undefined;
+    }));
   return Promise.all(
     (data ?? []).map(async (application) => {
       const student = one(application.students) as Record<string, unknown> | null;
@@ -248,12 +254,7 @@ export async function getAllApplicationsForOrganizer(options: { includeShareLink
       const resume = one(application.resumes) as Record<string, unknown> | null;
       const resumeId = (application.resume_id as string | null | undefined) ?? (resume?.id as string | null | undefined) ?? null;
       const resumeStoragePath = resume?.storage_path as string | null | undefined;
-      const [signed, sharePath] = await Promise.all([
-        resumeStoragePath
-          ? supabase.storage.from("resumes").createSignedUrl(resumeStoragePath, 60 * 10)
-          : Promise.resolve({ data: null }),
-        includeShareLinks ? getOrCreateResumeSharePath(supabase, application.id as string, resumeId) : Promise.resolve(null)
-      ]);
+      const sharePath = includeShareLinks ? await getOrCreateResumeSharePath(supabase, application.id as string, resumeId) : null;
 
       return {
         id: application.id as string,
@@ -268,7 +269,7 @@ export async function getAllApplicationsForOrganizer(options: { includeShareLink
         company_name: (company?.name as string | undefined) ?? "Company",
         role_title: (role?.title as string | undefined) ?? "Role",
         resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
-        resume_signed_url: signed.data?.signedUrl ?? null,
+        resume_signed_url: resumeStoragePath ? signedUrls.get(resumeStoragePath) ?? null : null,
         resume_share_path: sharePath,
         applied_at: application.applied_at as string,
         gd_applicable: Boolean(role?.gd_applicable),
@@ -319,7 +320,7 @@ export async function getRecruitersForOrganizer(): Promise<OrganizerRecruiter[]>
 }
 
 export async function getReportsForOrganizer(): Promise<OrganizerReportRow[]> {
-  const applications = await getAllApplicationsForOrganizer();
+  const applications = await getAllApplicationsForOrganizer({ includeResumeLinks: false });
   const rows = new Map<string, OrganizerReportRow>();
 
   applications.forEach((application) => {

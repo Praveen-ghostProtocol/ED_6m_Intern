@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isStudentApplicationLockedByRoll } from "@/lib/students/application-locks";
 import { getStudentStipendBand } from "@/lib/student/stipend-band";
+import { getSignedUrlMap } from "@/lib/supabase/signed-urls";
 import type {
   CompanyRole,
   MasterResumeEntry,
@@ -54,18 +55,8 @@ export async function getStudentResumes(studentId: string): Promise<StudentResum
 
   const resumes = data as Omit<StudentResume, "signed_url">[];
 
-  return Promise.all(
-    resumes.map(async (resume) => {
-      const { data: signed } = await supabase.storage
-        .from("resumes")
-        .createSignedUrl(resume.storage_path, 60 * 10);
-
-      return {
-        ...resume,
-        signed_url: signed?.signedUrl ?? null
-      };
-    })
-  );
+  const signedUrls = await getSignedUrlMap(supabase, "resumes", resumes.map((resume) => resume.storage_path));
+  return resumes.map((resume) => ({ ...resume, signed_url: signedUrls.get(resume.storage_path) ?? null }));
 }
 
 export async function getVerifiedResumeChoices(studentId: string): Promise<VerifiedResumeChoice[]> {
@@ -83,6 +74,21 @@ export async function getVerifiedResumeChoices(studentId: string): Promise<Verif
   }
 
   return data as VerifiedResumeChoice[];
+}
+
+export async function getStudentDashboardStats(studentId: string) {
+  const supabase = await createClient();
+  const [resumes, roles, applications] = await Promise.all([
+    supabase.from("resumes").select("id", { count: "exact", head: true }).eq("student_id", studentId).eq("status", "verified").is("removed_at", null),
+    supabase.from("internship_roles").select("id", { count: "exact", head: true }).eq("status", "open"),
+    supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", studentId)
+  ]);
+
+  return {
+    verifiedResumes: resumes.count ?? 0,
+    openRoles: roles.count ?? 0,
+    applications: applications.count ?? 0
+  };
 }
 
 export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRole[]> {
@@ -113,14 +119,11 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
     });
   });
 
-  return Promise.all(
-    (roles ?? []).map(async (role) => {
+  const signedUrls = await getSignedUrlMap(supabase, "job-descriptions", (roles ?? []).map((role) => role.jd_storage_path as string | null));
+  return (roles ?? []).map((role) => {
       const company = one(role.companies) as Record<string, unknown> | null;
       const application = applicationByRole.get(role.id as string) ?? null;
       const jdStoragePath = role.jd_storage_path as string | null;
-      const signed = jdStoragePath
-        ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
-        : { data: null };
 
       return {
         id: role.id as string,
@@ -134,7 +137,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
         eligibility: (role.eligibility as string | null) ?? null,
         job_description: role.job_description as string,
         jd_file_name: (role.jd_file_name as string | null) ?? null,
-        jd_signed_url: signed.data?.signedUrl ?? null,
+        jd_signed_url: jdStoragePath ? signedUrls.get(jdStoragePath) ?? null : null,
         selection_process: (role.selection_process as string | null) ?? null,
         gd_applicable: Boolean(role.gd_applicable),
         deadline: (role.deadline as string | null) ?? null,
@@ -144,8 +147,7 @@ export async function getOpenCompanyRoles(studentId: string): Promise<CompanyRol
         application_active_backlog: application?.active_backlog ?? null,
         has_applied: Boolean(application)
       };
-    })
-  );
+    });
 }
 
 export async function getStudentApplications(studentId: string): Promise<StudentApplication[]> {
@@ -162,14 +164,15 @@ export async function getStudentApplications(studentId: string): Promise<Student
     return [];
   }
 
-  return Promise.all(data.map(async (application) => {
+  const signedUrls = await getSignedUrlMap(supabase, "job-descriptions", data.map((application) => {
+    const role = one(application.internship_roles) as Record<string, unknown> | null;
+    return role?.jd_storage_path as string | null | undefined;
+  }));
+  return data.map((application) => {
     const role = one(application.internship_roles) as Record<string, unknown> | null;
     const company = one(role?.companies as Record<string, unknown> | Record<string, unknown>[] | null | undefined);
     const resume = one(application.resumes) as Record<string, unknown> | null;
     const jdStoragePath = role?.jd_storage_path as string | null | undefined;
-    const signed = jdStoragePath
-      ? await supabase.storage.from("job-descriptions").createSignedUrl(jdStoragePath, 60 * 10)
-      : { data: null };
 
     return {
       id: application.id as string,
@@ -185,10 +188,10 @@ export async function getStudentApplications(studentId: string): Promise<Student
       resume_file_name: (resume?.file_name as string | undefined) ?? "Resume",
       job_description: (role?.job_description as string | null | undefined) ?? null,
       jd_file_name: (role?.jd_file_name as string | null | undefined) ?? null,
-      jd_signed_url: signed.data?.signedUrl ?? null,
+      jd_signed_url: jdStoragePath ? signedUrls.get(jdStoragePath) ?? null : null,
       selection_process: (role?.selection_process as string | null | undefined) ?? null
     } as StudentApplication;
-  }));
+  });
 }
 export async function getStudentMasterResumeEntries(studentId: string): Promise<MasterResumeEntry[]> {
   const supabase = await createClient();
